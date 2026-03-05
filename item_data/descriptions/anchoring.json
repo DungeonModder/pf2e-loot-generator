@@ -1,1 +1,1 @@
-{"name": "Anchoring", "description": "<p>This rune prevents enemies from escaping your grasp by <em>Fleeing</em> to other planes. If you critically hit a target with an anchoring weapon, the weapon casts <em>Planar Tether</em> on the target (DC 27 Will, counteract modifier +17).</p>"}
+{"name":"Anchoring","description":"<p>This rune prevents enemies from escaping your grasp by  to other planes. If you critically hit a target with an anchoring weapon, the weapon casts  on the target (DC 27 Will, counteract modifier [[/r 1d20+17 #counteract]]{+17}).</p>"}
