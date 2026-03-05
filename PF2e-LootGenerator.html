@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PF2e Loot & Treasure Generator</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@700&family=Lora:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Library for Multi-Select Dropdowns -->
+    <script src="libs/slimselect.min.js" defer></script>
+    <link href="libs/slimselect.css" rel="stylesheet">
+
+    <!-- Library for Range Slider -->
+    <script src="libs/nouislider.min.js" defer></script>
+    <link href="libs/nouislider.min.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="libs/tailwindcss.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode based on class
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'title': ['"Grenze Gotisch"', 'serif'],
+                        'sans': ['"Lora"', 'serif'],
+                    },
+                    colors: {
+                        // Colors are defined in the CSS variables below
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* --- THEME AND BRANDING STYLES --- */
+        :root {
+            --bg: #EAEFFF;
+            --ink: #192729;
+            --header: #061113;
+            --border: #D1D9E6;
+            --accent: #6EE459;
+            --accent-hover: #5ACD46;
+            --accent-text: #192729;
+            --card-bg: #F7F9FF;
+            --tag-bg: #D9F7D3;
+            --slider-bg: #D1D9E6;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        html.dark {
+            --bg: #192729;
+            --ink: #EAEFFF;
+            --header: #F7F9FF;
+            --border: #3d4a4c;
+            --accent: #6EE459;
+            --accent-hover: #85E875;
+            --accent-text: #192729;
+            --card-bg: #061113;
+            --tag-bg: #2a5223;
+            --slider-bg: #3d4a4c;
+            --danger: #ef4444;
+            --danger-hover: #f87171;
+        }
+
+        /* Applying theme variables */
+        body { background-color: var(--bg); color: var(--ink); }
+        .themed-header { color: var(--header); }
+        .themed-card { background-color: var(--card-bg); border-color: var(--border); }
+        .themed-border { border-color: var(--border); }
+        .themed-accent-bg { background-color: var(--accent); color: var(--accent-text); }
+        .themed-accent-bg:hover { background-color: var(--accent-hover); }
+        .themed-tag-bg { background-color: var(--tag-bg); }
+        .themed-accent-text { color: var(--accent); }
+        .themed-card-bg { background-color: var(--card-bg); }
+        .themed-danger-bg { background-color: var(--danger); color: white; }
+        .themed-danger-bg:hover { background-color: var(--danger-hover); }
+
+        /* --- Custom Checkbox/Radio Styling --- */
+        input[type="checkbox"], input[type="radio"] {
+            accent-color: var(--accent);
+        }
+
+        /* --- noUiSlider THEME --- */
+        .noUi-target { background: var(--slider-bg); border: none; box-shadow: none; height: 6px; }
+        .noUi-connect { background: var(--accent); }
+        .noUi-handle {
+            width: 24px !important;
+            height: 24px !important;
+            right: -12px !important;
+            top: -9px !important;
+            border: 2px solid var(--card-bg);
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: none;
+            cursor: grab;
+        }
+        .noUi-handle:active { cursor: grabbing; }
+        .noUi-handle:after, .noUi-handle:before { display: none; }
+        
+        /* --- DESCRIPTION PARAGRAPH SPACING --- */
+        .description-content p {
+            margin-bottom: 0.75rem;
+        }
+        .description-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- Inventory Modal Styling --- */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        
+        /* --- Visually Hidden Helper --- */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* --- Tab Styling --- */
+        .tab-btn {
+            transition: all 0.2s ease-in-out;
+            border-bottom: 4px solid transparent;
+            padding-bottom: 8px;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        .tab-btn.active {
+            border-bottom-color: var(--accent);
+            color: var(--header);
+        }
+        #tab-content-container > .tab-content {
+            display: none;
+        }
+        #tab-content-container > .tab-content.active {
+            display: grid;
+        }
+
+        /* --- Slim Select Theme Override --- */
+        html.dark .ss-main {
+            color: var(--ink);
+        }
+
+        html.dark .ss-content .ss-search input {
+            color: var(--accent-text);
+        }
+
+        html.dark .ss-main .ss-values .ss-value {
+            background-color: var(--tag-bg); 
+            color: var(--ink);
+        }
+        html.dark .ss-main .ss-values .ss-value .ss-value-delete {
+            color: var(--ink);
+        }
+        
+        html:not(.dark) .ss-main .ss-values .ss-value {
+            background-color: var(--tag-bg);
+        }
+
+        .ss-content .ss-list .ss-option:hover,
+        .ss-content .ss-list .ss-option.ss-highlighted {
+            background-color: var(--accent);
+            color: var(--accent-text);
+        }
+        .ss-content .ss-list .ss-option:not(.ss-disabled).ss-selected {
+            background-color: var(--accent);
+            color: var(--accent-text);
+        }
+
+        html:not(.dark) .ss-main .ss-values .ss-value .ss-value-text {
+            color: var(--accent-text);
+        }
+        html:not(.dark) .ss-main .ss-values .ss-value .ss-value-delete {
+            color: var(--accent-text);
+            border-left: solid 1px var(--accent-text);
+        }
+        html:not(.dark) .ss-main .ss-values .ss-value .ss-value-delete svg path {
+            stroke: var(--accent-text); 
+        }
+        
+        /* --- Tooltip Styling --- */
+        .tooltip {
+            position: absolute;
+            display: none;
+            background-color: var(--card-bg);
+            color: var(--ink);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 10;
+            width: 250px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-size: 0.875rem;
+        }
+        .has-tooltip:hover .tooltip {
+            display: block;
+        }
+        .treasure-item-name {
+            cursor: pointer;
+            position: relative;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+
+        /* --- Reroll Button Styling --- */
+        .reroll-btn {
+            color: var(--ink);
+            opacity: 0.6;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .reroll-btn:hover {
+            opacity: 1;
+            transform: rotate(30deg);
+        }
+
+        /* --- Treasure List Styling --- */
+        #treasure-results .items-section ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        /* --- Themed Logo Styling --- */
+        .themed-logo .st0 { fill: var(--ink); }
+        .themed-logo .st1 { fill: var(--accent); }
+    </style>
+</head>
+<body class="font-sans p-4 sm:p-6 transition-colors duration-300">
+
+    <div class="container max-w-4xl mx-auto grid gap-8">
+        <nav class="flex justify-between items-center text-sm mb-4 border-b themed-border pb-4">
+            <a href="https://dungeonmod.com" target="_top">
+                <svg class="themed-logo h-8 w-auto" id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1866.6 290.4">
+                    <g id="DungeonMod">
+                        <g>
+                        <path class="st0" d="M227.9,118.4c0,8.9-2.2,20.2-6.5,33.7-4.5,14-9.6,25.5-15.2,34.4-2.9,4.5-6.7,9.1-11.3,14s-10.2,9.7-16.9,14.7c-16.5,12.5-30.6,18.7-42.5,18.7h-9.5c-5.2,0-10.6-1-15.9-3.1-5.4-2.1-10.7-5.5-15.9-10.3l-27-24.9c-5.2-4.8-10.4-8.2-15.5-10.4-5.1-2.2-9.9-3.2-14.5-3.2-11.4,0-18.4,5.5-21,16.4-2.6,10.9-6.2,16.4-10.9,16.4s-3.2-.8-4-2.4c-.8-1.6-1.3-3.6-1.3-5.9,0-3.5,1.1-7.2,3.2-11.1,2.2-3.9,5.5-7.5,9.9-11.1l24.2-19.4c4.8-3.9,8.2-7.9,10.3-12.2,2.1-4.3,3.1-8.6,3.1-12.9v-21.2c0-19.6-5.2-29.9-15.7-31.2-4.9-.8-7.4-2.4-7.4-4.8s.3-2.2.9-2.8c.6-.9,2.1-1.4,4.4-1.4h9.5c3.5,0,7.4-.5,11.5-1.4,4.2-.9,8.7-2.5,13.6-4.8l28.9-13.9c2,0,3,1.4,3,4.2s-1.6,4-4.8,6.9c-3.1,3.1-4.6,6.1-4.6,9v58.2c0,2.8,1.1,5.4,3.2,7.9s3.2,4.1,3.2,4.9c0,1.9-3.4,3.6-10.2,5.3-6.9,1.4-12.4,4.9-16.4,10.6.6.2,1.3.3,2.1.5.8.1,1.8.3,3,.4s2.9.1,5,.1h8c3.5,0,7.2.8,11.1,2.3,3.8,1.5,7.8,4.1,12,7.6,3.7,3.1,7.3,6.2,10.8,9.2s7.1,6.1,10.6,9c8.3,6.8,16.1,10.2,23.3,10.2,12.5,0,24.6-8.2,36.3-24.5,11.1-15.4,16.6-29.9,16.6-43.4v-9.5c0-19.9-6.6-37.1-19.6-51.7-13.1-14.9-27.4-22.4-42.9-22.4h-39l-12.7,2.1c-9.1,1.4-14.8,2.1-17.1,2.1h-28.7c-8.5,0-15.9-2-22.2-6-7.1-4.6-10.6-10.8-10.6-18.5s2.2-13.8,6.7-20.1c4.6-6.3,9.5-9.5,14.5-9.5s2.5,1.4,3.5,4.2c2,6.5,7.2,9.7,15.5,9.7,10.3-1.4,20.2-2.6,29.8-3.7,9.5-1.1,17.3-1.6,23.3-1.6h39.3c23.2,0,42.7,9.6,58.4,28.9,14,16.9,21,35.2,21,54.7v23.3h0Z"/>
+                        <path class="st0" d="M403.5,211.4c0,.3-.2.6-.4.8-10,7.4-17.8,13-23.6,16.8-4.9,3.4-8,5.1-9.2,5.1-4.5,0-12.2-9.3-23.3-27.9l-45.5,27.9c-6.5-1.5-15.2-6.6-26.3-15.2-12.8-10-19.2-18.2-19.2-24.7v-75.1c0-4-.7-6.7-2.1-8.1-1.4-1.4-3.2-2.1-5.5-2.1s-2.3,0-3.7.2-2.2.2-2.3.2c-2.6,0-3.9-1.3-3.9-3.9s6.2-6.2,18.5-13.9c12.3-7.5,19.1-11.3,20.3-11.3s4.4,2.5,8.1,7.4c4.8,6.3,4.5,13.7,4.5,22.2l-.5,56.8c0,10.3,2.7,19.3,8.1,27,6,8.3,13.7,12.5,23.1,12.5s8-2.2,14.8-6.7c7.9-5.2,11.8-10.2,11.8-15v-83.4c0-.9-.5-2.5-1.4-4.6-.8-1.4-1.7-2.9-2.7-4.5-1-1.6-2.3-3.3-3.8-5v-4.6h5.5c3.5,0,6.2.4,8,1.2,1.8.8,3.7,1.5,5.7,2.3h13.2c.8,0,2.8-.7,6-2.1,3.1-1.5,5.4-2.3,6.9-2.3s3,.5,3.6,1.5c.5,1,.8,2.3.8,4-1.9,2.8-3.4,5.7-4.6,8.8-1.1,2.6-2,5.5-2.9,8.6s-1.7,6.4-2.4,9.9v74.4l5.7,13.4c.2.4.6.8,1.1.9,2.3.6,13.6,3.2,17.2,4.2.5.1.8.5.8,1v3.3h0Z"/>
+                        <path class="st0" d="M752.2,209c0,25.1-10.2,38.5-29.1,55.3-19.7,17.4-39,26.1-58,26.1h-9.9c-10.6,0-22-3.9-34.2-11.8-11.1-7.1-16.6-12.5-16.6-16.2l15.2-11.6c10.8-8,17.5-12.6,20.1-13.9,2,11.1,8.3,19.8,18.9,26.1,7.8,4.6,15.1,6.9,21.7,6.9s15.8-3.5,24.7-10.6c9.7-7.6,14.5-15.6,14.5-24.2v-7.6c0-2.7-.3-5.3-1-7.9l-1.7-6.3c-1.1-3.9-2-7.1-2.9-9.7-.8-2.6-1.6-4.7-2.2-6.2-7.7,10-15.8,18.3-24.2,24.9-9.1,7.6-19.1,11.3-30,11.3s-27.9-6.3-38.6-18.9c-9.7-11.6-14.5-24.1-14.5-37.6v-11.1c0-14.5,5.6-28.8,16.9-42.9,9.4-11.8,21.2-22.2,35.3-30.9,12.8-8,22.9-12,30.2-12h11.5c1.7,0,7,1.1,15.9,3.2,1.4.3,3.1.7,5.2,1.3,2.1.5,4.5,1.2,7.3,2,.3,0,3.5-1.1,9.5-3.2.9-.3,2.1-.7,3.5-1.3,1.4-.5,3.1-1.2,5.1-2,1.1.8,1.9,1.4,2.5,1.8,1.8,1.7,2.8,3.2,2.8,4.6-2,3.4-3.8,6.6-5.5,9.7-1.7,3.1-3.3,6-4.8,8.8-3.4,6.2-5.1,11.5-5.1,15.9v15.5c0,2,.7,5.5,2,10.4,1.3,4.9,3.4,11.5,6.3,19.6,9.3,22.6,9.3,34.4,9.3,42.4ZM718.3,112.8s0,0,0,0c-3.6,2.2-7.1,4-10.5,5.2-3.5,1.2-7.4,1.8-11.9,1.8s-11.3-1.5-19.2-4.6c-7.7-3.2-12.9-4.8-15.7-4.8-5.7,0-11.1,3.5-16.2,10.4-4.9,6.8-7.4,14.3-7.4,22.6,0,14,3.3,26.2,9.9,36.5,8.5,13.4,16.8,20.1,24.9,20.1,0,0,11.3,1.2,17.3-4,1.5-1.3,3.1-2.1,4.2-2.9,6.8-5.4,10.2-10.2,10.2-14.3s-.8-5.8-2.3-9.5c-1.4-3.9-2.1-6.5-2.1-8.1v-9.7c0-6.9,2.9-15.3,8.8-25.2,4.8-8,7.5-11.6,10-13.5Z"/>
+                        <path class="st0" d="M892.1,112.4c0,1.8-5.8,6.7-17.5,14.6-4.6,3.1-9.7,6.4-15.4,9.9s-11.8,7.2-18.6,11.1l-22.6,12.9c-6.9,4-12.2,7-15.7,9.1-3.5,2.1-5.3,3.5-5.3,4.3,2.2,2.6,4.1,5,5.9,7,1.8,2.1,3.5,3.7,5.2,5,10,8.2,21,12.2,33,12.2s18.2-2.8,25.4-8.3l17.8-18.2c2,0,3.3.7,3.8,2,.5,1.3.8,3.2.8,5.7,0,11.7-6.4,23.7-19.2,36-12.6,12.2-24.3,18.2-35.1,18.2h-15.5c-10.2,0-21.6-7.2-34.2-21.5-12.6-14.2-18.9-27.6-18.9-40.4v-29.8c0-12,6.2-25.1,18.7-39.3,13.4-15.1,26.7-22.6,40-22.6h11.1c5.1,0,15.7,4.8,31.9,14.6,16.3,9.7,24.5,15.5,24.5,17.5ZM850.1,126.7c-7.1-3.4-15.5-11.3-25.4-23.8-3.2-4-7.3-6-12.2-6s-11.1,2.8-15.7,8.3c-1.8,3.2-3.9,6.4-5.5,9.7-12.8,25.8-1,42.6,2.5,46,1.1-1.4,7.4-5.5,18.9-12.2,6.3-3.5,12.5-7.2,18.7-10.9,6.1-3.7,12.4-7.4,18.7-11.1Z"/>
+                        <path class="st0" d="M1043.2,156.7c0,20.5-9.1,39-27.2,55.7-15.7,14.3-29.9,21.5-42.5,21.5-20,0-37.2-8.7-51.5-26.1-11.5-14-17.3-26.1-17.3-36.3v-14.8c0-14.3,6.9-30.4,20.8-48.3,14.6-18.8,28.9-28.2,42.7-28.2h12.7c12.6,0,25.7,7,39.3,21,15.4,15.9,23.1,34.3,23.1,55.4ZM1022,176.8c.9-8.3-9.6-24.6-9.6-24.6-3.5-6-7.3-11.4-11.2-16.2-3.9-4.8-7.9-8.9-11.9-12.5-11.5-10.2-23.7-15.2-36.5-15.2s-13.2,3-18.7,9c-5.4,5.8-8.1,12.9-8.1,21,0,13.6,8.3,28,24.9,43.4,16.5,15.4,31.4,23.1,44.8,23.1s10.5-2,14.8-6c0,0,10.4-12.1,11.4-22Z"/>
+                        <path class="st0" d="M1224.7,215.9c0,1.1-4.8,4.8-14.3,11.1-3.1,2.2-7.9,5.2-14.6,9-1.7,0-6.3-3.1-13.9-9.2-8.6-7.2-12.9-13.1-12.9-17.6v-71.8c0-6-1.2-10.7-3.7-14.1-2.5-3.7-8-8.6-16.6-14.8l-33.7,19.6v83.4c0,7.4,1.2,11.9,3.7,13.4,1.4.9,2.1,2.8,2.1,5.5v2.6c0,.5-.4.8-.8.8h-5.4c-1,0-2-.3-2.8-.8-.5-.4-1.2-.7-2-1-4.8-2.5-10-3.7-15.7-3.7s-9.4,1.7-16.2,5.2c-.4.2-.9.4-1.4.4h-3.6s-.3-1.4-.3-2c0-.5-.1-1.1-.1-1.7.3-.6.5-1.2.5-1.9,0-1.9,1.2-6,3.7-12.5,2.6-6.9,3.9-11,3.9-12.2v-79.7c0-7.2-3.9-12.2-11.8-15-7.7-2.6-11.6-4.7-11.6-6.2s1.2-2.3,3.7-4.5c2.5-2.2,6.2-5,11.3-8.2l15-9.7c3.1,0,6.2,1.1,9.2,3.3,3.1,2.2,5.9,5.7,8.5,10.5l11.3,19.9,54-32.6c7.7,3.1,15.5,9.2,23.3,18.5,8.2,10,12.2,19.1,12.2,27.2v63.1c0,13.9,3.2,20.9,9.5,21.2,6.3.3,9.5,1.7,9.5,4.4Z"/>
+                        <path class="st0" d="M587.5,215.9c0,1.1-4.8,4.8-14.3,11.1-3.1,2.2-7.9,5.2-14.5,9-1.7,0-6.3-3.1-13.9-9.2-8.6-7.2-12.9-13.1-12.9-17.6v-71.8c0-6-1.2-10.7-3.7-14.1-2.5-3.7-8-8.6-16.6-14.8l-33.7,19.6v83.4c0,7.4,1.2,11.9,3.7,13.4,1.4.9,2.1,2.8,2.1,5.5v2.6c0,.5-.4.8-.8.8h-5.4c-1,0-2-.3-2.8-.8-.5-.4-1.2-.7-2-1-4.8-2.5-10-3.7-15.7-3.7s-9.4,1.7-16.2,5.2c-.4.2-.9.4-1.4.4h-3.6s-.3-1.4-.4-2c0-.5-.1-1.1-.1-1.7.3-.6.5-1.2.5-1.9,0-1.9,1.2-6,3.7-12.5,2.6-6.9,3.9-11,3.9-12.2v-79.7c0-7.2-3.9-12.2-11.8-15-7.7-2.6-11.5-4.7-11.5-6.2s1.2-2.3,3.7-4.5c2.5-2.2,6.2-5,11.3-8.2l15-9.7c3.1,0,6.2,1.1,9.2,3.3,3.1,2.2,5.9,5.7,8.5,10.5l11.3,19.8,54-32.6c7.7,3.1,15.5,9.2,23.3,18.5,8.2,10,12.2,19.1,12.2,27.2v63.1c0,13.9,3.2,20.9,9.5,21.2,6.3.3,9.5,1.8,9.5,4.4Z"/>
+                        <path class="st1" d="M1266.2,6.7h78.5l40.1,165.7,40.1-165.7h78.5v227.2h-46.1V58.1h-5l-44.4,165.7h-46.1l-44.4-165.7h-5v175.7h-46.1V6.7h0Z"/>
+                        <path class="st1" d="M1691.9,150c0,51.4-18.7,87.9-76.8,87.9s-76.8-36.4-76.8-87.9,18.7-87.2,76.8-87.2,76.8,35.8,76.8,87.2ZM1646.4,150c0-32.4-6.7-49.1-31.4-49.1s-31.4,16.7-31.4,49.1,6.7,49.8,31.4,49.8,31.4-17.4,31.4-49.8Z"/>
+                        <path class="st1" d="M1866.6,233.9h-44.4v-7s-23.4,11-40.4,11c-50.4,0-65.2-29.4-65.2-88.2s23.7-86.9,69.2-86.9,36.1,4.7,36.1,4.7V0h44.8v233.9h0ZM1821.8,192.8v-87.9s-18.4-3.3-32.7-3.3-27.1,14.4-27.1,48.1,6.3,48.1,27.4,48.1c15.7,0,32.4-5,32.4-5Z"/>
+                        </g>
+                    </g>
+                </svg>
+            </a>
+            <div class="flex items-center gap-4">
+                <!-- <a href="#" class="font-bold hover:text-[var(--accent)] transition-colors">More Tools</a> -->
+                <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] focus:ring-[var(--accent)]">
+                    <svg id="theme-icon-light" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="theme-icon-dark" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+            </div>
+        </nav>
+
+        <header class="text-center relative">
+            <h1 class="font-title themed-header text-5xl sm:text-6xl">Pathfinder 2e Loot Finder</h1>
+            <h2 class="text-lg text-gray-500 dark:text-gray-400">Find the perfect treasure for your party—no Perception checks required.</h2>
+            
+        </header>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center border-b themed-border pb-2 gap-4">
+            <div class="flex justify-center sm:justify-start">
+                <button class="tab-btn active font-title px-4" data-tab="finder">Loot Finder</button>
+                <button class="tab-btn font-title px-4" data-tab="generator">Treasure Generator</button>
+                <button class="tab-btn font-title px-4" data-tab="about">About</button>
+            </div>
+            <button id="inventory-btn" class="w-full sm:w-auto themed-accent-bg font-bold rounded-md py-2 px-4 shadow-lg flex items-center justify-center gap-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] focus:ring-[var(--accent)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="6 0 58 58" fill="currentColor">
+                    <g transform="matrix(1,0,0,1,28,2)">
+                        <path d="M0,31.886L-20.529,23.746L-20.529,23.38C-20.529,21.225 -19.866,19.488 -18.731,18.287C-18.474,18.015 -18.193,17.77 -17.89,17.554C-17.568,17.325 -17.222,17.129 -16.854,16.966C-16.02,16.598 -15.074,16.405 -14.046,16.405C-12.876,16.405 -11.599,16.656 -10.264,17.185C-4.595,19.433 0.001,25.851 0.001,31.521L0.001,54.53L-20.529,46.389L-20.529,26.161L0,34.301L0,31.886ZM3.4,5.521C2.971,5.625 2.563,5.767 2.18,5.948L8.721,2.769C9.08,2.605 9.46,2.473 9.858,2.376C10.411,2.241 11,2.171 11.618,2.171C11.732,2.171 11.846,2.174 11.962,2.178C12.404,2.196 12.859,2.249 13.326,2.338C14.004,2.467 14.705,2.671 15.424,2.956C21.128,5.218 25.753,11.676 25.753,17.381L25.753,19.821L19.272,22.972L19.272,20.532C19.272,14.827 14.648,8.369 8.943,6.107C8.238,5.827 7.549,5.625 6.884,5.496C6.414,5.405 5.956,5.35 5.511,5.33C5.386,5.324 5.261,5.322 5.138,5.322C4.528,5.322 3.946,5.39 3.4,5.521ZM19.272,46.35L19.272,34.349L21.764,33.137L21.764,24.167L25.753,22.228L25.753,43.2L19.272,46.35ZM6.311,52.651L6.311,31.68L11.594,29.111L11.594,38.081L12.792,37.499L12.792,49.501L6.311,52.651ZM-9.71,11.86C-10.085,11.96 -10.443,12.09 -10.781,12.249L-4.24,9.07C-3.89,8.91 -3.521,8.781 -3.133,8.685C-2.572,8.545 -1.972,8.472 -1.343,8.472C-1.225,8.472 -1.107,8.475 -0.987,8.48C-0.541,8.499 -0.079,8.553 0.394,8.645C1.062,8.774 1.754,8.976 2.463,9.257C8.167,11.519 12.792,17.977 12.792,23.683L12.792,26.122L6.311,29.273L6.311,26.833C6.311,21.128 1.687,14.67 -4.019,12.408C-4.736,12.123 -5.437,11.919 -6.114,11.79C-6.591,11.699 -7.055,11.646 -7.506,11.629C-7.612,11.625 -7.718,11.623 -7.823,11.623C-8.489,11.623 -9.121,11.704 -9.71,11.86ZM13.094,35.684L13.094,27.923L20.264,24.437L20.264,32.198L13.094,35.684ZM15.119,33.137L18.24,31.628L17.645,29.162C17.686,29.103 17.725,29.044 17.762,28.983C17.978,28.628 18.11,28.24 18.11,27.883C18.11,27.525 17.979,27.262 17.762,27.116C17.5,26.939 17.112,26.934 16.679,27.144C15.889,27.526 15.248,28.477 15.248,29.267C15.248,29.684 15.428,29.972 15.714,30.096L15.119,33.137ZM17.762,45.895L14.301,47.577L14.301,36.766L17.762,35.083L17.762,45.895ZM4.801,52.196L1.501,53.8L1.501,34.018L4.801,32.414L4.801,52.196ZM2.457,7.645C2.931,7.415 3.401,7.187 3.865,6.962C4.266,6.875 4.691,6.831 5.138,6.831C6.157,6.831 7.25,7.06 8.387,7.51C13.469,9.525 17.762,15.489 17.762,20.532L17.762,23.706L14.301,25.388L14.301,23.683C14.301,17.315 9.345,10.363 3.019,7.854C2.831,7.78 2.644,7.71 2.457,7.645ZM-12.747,14.989C-11.705,14.486 -10.518,13.914 -9.235,13.296C-8.794,13.187 -8.322,13.132 -7.823,13.132C-6.804,13.132 -5.711,13.361 -4.574,13.811C0.508,15.826 4.801,21.79 4.801,26.833L4.801,30.007L1.501,31.611L1.501,31.521C1.501,25.193 -3.424,18.284 -9.711,15.791C-10.74,15.383 -11.756,15.115 -12.747,14.989ZM15.337,1.316C16.173,0.944 17.123,0.75 18.156,0.75C19.326,0.75 20.602,1.001 21.938,1.53C27.607,3.778 32.203,10.196 32.203,15.866L32.203,16.685L27.262,19.087L27.262,17.381C27.262,11.014 22.306,4.062 15.98,1.553C15.765,1.468 15.551,1.389 15.337,1.316ZM32.203,19.092L32.203,38.875L27.262,41.276L27.262,21.494L32.203,19.092Z" />
+                    </g>
+                </svg>
+                <span class="text-lg font-title">Inventory</span>
+                <span id="inventory-count" class="bg-white/30 dark:bg-black/30 rounded-full px-2.5 py-0.5 text-sm font-mono">0</span>
+            </button>
+        </div>
+
+        <div id="tab-content-container">
+            <div id="finder-tab" class="tab-content active grid gap-6">
+                <div class="controls themed-card border rounded-lg p-6 grid gap-6 shadow-md">
+                    <fieldset class="filter-group">
+                        <legend class="font-bold text-xl mb-2">Search by Name</legend>
+                        <input type="text" id="name-search" placeholder="E.g., Retribution Axe" class="w-full p-2 themed-border border rounded themed-card-bg">
+                    </fieldset>
+                    <fieldset class="filter-group">
+                        <legend class="font-bold text-xl mb-2 flex justify-between items-baseline">
+                            <span>Item Level Range</span> &nbsp;
+                            <span id="level-display-finder" class="text-xl">1 - 5</span>
+                        </legend>
+                        <div id="level-slider-finder" class="mt-4"></div>
+                    </fieldset>
+                    <fieldset class="filter-group">
+                        <legend class="font-bold text-xl mb-2">Rulebook</legend>
+                        <select id="rulebook-select-finder" multiple></select>
+                    </fieldset>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2">Item Category</legend>
+                            <div id="category-filters" class="flex flex-wrap gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="item-category" value="all" class="h-4 w-4 themed-border" checked><span>All</span></label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="item-category" value="permanent" class="h-4 w-4 themed-border"><span>Permanent</span></label>
+                                <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="item-category" value="consumable" class="h-4 w-4 themed-border"><span>Consumable</span></label>
+                            </div>
+                        </fieldset>
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2">Rarity</legend>
+                            <div id="rarity-filters" class="checkbox-grid grid grid-cols-2 sm:grid-cols-[1fr_1.5fr_0.8fr_1fr] gap-x-2 gap-y-2"></div>
+                        </fieldset>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2">Item Type</legend>
+                            <select id="type-select" multiple></select>
+                        </fieldset>
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2">Item Tags</legend>
+                            <select id="tag-select" multiple></select>
+                        </fieldset>
+                    </div>
+
+                    <div class="flex gap-4">
+                        <button id="generate-btn" class="w-full themed-accent-bg font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Generate Loot</button>
+                        <button id="reset-btn" class="w-full themed-card themed-border border font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Reset Filters</button>
+                    </div>
+                </div>
+                <div id="sort-controls" class="hidden justify-end items-center gap-2">
+                    <label for="sort-by" class="font-bold">Sort by:</label>
+                    <select id="sort-by" class="themed-card themed-border border rounded-md p-2">
+                        <option value="level-asc">Level (Ascending)</option>
+                        <option value="level-desc">Level (Descending)</option>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="rarity">Rarity</option>
+                    </select>
+                </div>
+                <div id="results" class="grid gap-4">
+                    <p class="placeholder text-center p-8 text-gray-500 italic">Your loot will appear here.</p>
+                </div>
+                <div id="pagination-controls" class="hidden justify-center items-center gap-4 mt-4">
+                    <button id="prev-page-btn" class="themed-accent-bg font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">&lt; Previous</button>
+                    <span id="page-info" class="font-bold"></span>
+                    <button id="next-page-btn" class="themed-accent-bg font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">Next &gt;</button>
+                </div>
+            </div>
+
+            <div id="generator-tab" class="tab-content grid gap-6">
+                <div class="controls themed-card border rounded-lg p-6 grid gap-6 shadow-md">
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2 flex justify-between items-baseline">
+                                <span>Party Level</span> &nbsp;
+                                <span id="level-display-generator" class="text-xl">1</span>
+                            </legend>
+                            <div id="party-level-slider-generator" class="mt-4"></div>
+                        </fieldset>
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2 flex justify-between items-baseline">
+                                <span>Party Size</span> &nbsp;
+                                <span id="party-size-display" class="text-xl">4</span>
+                            </legend>
+                            <div id="party-size-slider" class="mt-4"></div>
+                        </fieldset>
+                    </div>
+                    <fieldset class="filter-group">
+                        <legend class="font-bold text-xl mb-2">Rulebook</legend>
+                        <select id="rulebook-select-generator" multiple></select>
+                    </fieldset>
+                     <div class="grid md:grid-cols-2 gap-6">
+                        <fieldset class="filter-group">
+                            <legend class="font-bold text-xl mb-2">Rarity</legend>
+                            <div id="rarity-filters-generator" class="checkbox-grid grid grid-cols-2 sm:grid-cols-[1fr_1.5fr_0.8fr_1fr] gap-x-2 gap-y-2"></div>
+                        </fieldset>
+                        <fieldset class="filter-group">
+                             <legend class="font-bold text-xl mb-2">Content Options</legend>
+                             <div class="flex items-center gap-2">
+                                 <input type="checkbox" id="remaster-only-toggle" class="h-4 w-4 rounded themed-border">
+                                 <label for="remaster-only-toggle">Remaster Only</label>
+                             </div>
+                        </fieldset>
+                    </div>
+                    <div class="flex gap-4">
+                        <button id="generate-treasure-btn" class="w-full themed-accent-bg font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Generate Treasure</button>
+                        <button id="reset-btn-generator" class="w-full themed-card themed-border border font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Reset Filters</button>
+                    </div>
+                </div>
+                <div id="treasure-results" class="grid gap-4">
+                    <p class="placeholder text-center p-8 text-gray-500 italic">Your treasure horde will appear here.</p>
+                </div>
+            </div>
+
+            <div id="about-tab" class="tab-content grid gap-6">
+                <div class="themed-card border rounded-lg p-6 shadow-md prose prose-lg">
+                    <h2 class="font-title themed-header text-3xl border-b themed-border pb-2 mb-4">About This Tool</h2>
+                    
+                    <h3 class="font-bold text-xl mt-6 mb-2">Acknowledgements</h3>
+                    <p class="mb-4">This tool came about in the midst of work crunch while I was learning the system and could barely remember to award loot to my poor players. I hope it saves you hours combing through to find treasure (as it already has for me)! I maintain this tool alongside updates to my personal Pathfinder 2e Obsidian vault so bear with me if updates are slow. Feel free to <a href="https://dungeonmod.com/contact/" target="_blank" class="themed-accent-text hover:underline">get in touch</a> if you have feedback or questions.</p>
+                    <p class="mb-4">This tool was designed by me and created with the assistance of AI. This project wouldn't be possible without the work of the following community projects:</p>
+                    <ul class="list-disc pl-5">
+                        <li>The absolutely indispensible <a href="https://2e.aonprd.com/" target="_blank" class="themed-accent-text hover:underline">Archives of Nethys</a></li>
+                        <li>The immense time savings of <a href="https://obsidianttrpgtutorials.com/" target="_blank" class="themed-accent-text hover:underline">Obsidian TTRPG Tutorials</a></li>
+                        <li>The wonderful folks maintaining the <a href="https://foundryvtt.com/packages/pf2e" target="_blank" class="themed-accent-text hover:underline">Foundry VTT PF2e Game System</a></li>
+                        <li>MostTornBrain's excellent <a href="https://github.com/MostTornBrain/pf2e-md-exporter" target="_blank" class="themed-accent-text hover:underline">PF2E Markdown Exporter</a></li>
+                    </ul>
+
+                    <h3 class="font-bold text-xl mt-6 mb-2">Paizo Community Use Policy</h3>
+                    <p class="text-sm italic">
+                        This tool uses trademarks and/or copyrights owned by Paizo Inc., used under Paizo's Community Use Policy (paizo.com/licenses/communityuse). We are expressly prohibited from charging you to use or access this content. This website is not published, endorsed, or specifically approved by Paizo. For more information about Paizo Inc. and Paizo products, visit paizo.com.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content themed-card border rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 opacity-0">
+            <div class="flex justify-between items-center p-4 themed-border border-b">
+                <h2 class="font-title themed-header text-3xl">Your Loot Inventory</h2>
+                <button id="close-modal-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+            </div>
+            <div id="inventory-list" class="p-6 overflow-y-auto flex-grow">
+                <!-- Content generated by JS -->
+            </div>
+            <div class="p-4 themed-border border-t flex flex-col sm:flex-row gap-4">
+                 <div class="flex-grow flex gap-4">
+                    <div class="relative flex-grow">
+                         <select id="export-format-select" class="w-full h-full themed-card themed-border border font-bold py-2 px-4 rounded-md appearance-none pr-8 cursor-pointer">
+                            <option value="plaintext">Copy plain text</option>
+                            <option value="discord">Copy for Discord</option>
+                            <option value="obsidian">Copy for Obsidian</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                    <button id="copy-btn" class="themed-accent-bg font-bold py-2 px-3 rounded-md transition-colors duration-200 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        Copy
+                    </button>
+                </div>
+                <button id="clear-inventory-btn" class="w-full sm:w-auto themed-danger-bg font-bold py-2 px-4 rounded-md transition-colors duration-200">Clear</button>
+            </div>
+        </div>
+    </div>
+    
+    <textarea id="clipboard-helper" class="visually-hidden"></textarea>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- THEME TOGGLE LOGIC ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const lightIcon = document.getElementById('theme-icon-light');
+            const darkIcon = document.getElementById('theme-icon-dark');
+
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                lightIcon.classList.toggle('hidden');
+                darkIcon.classList.toggle('hidden');
+                if (document.documentElement.classList.contains('dark')) {
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            // --- STEP 1: LOAD ITEM DATA ---
+            let items; // Declare items here so it's available for Step 2
+            try {
+                // Use the root-relative path we discussed
+                const response = await fetch('item_data/PF2e-items.json'); 
+                
+                if (!response.ok) {
+                    // This is a specific error for a 404 or server issue
+                    throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+                }
+                
+                items = await response.json();
+
+            } catch (error) {
+                // This CATCH block is *only* for data loading failures
+                console.error("CRITICAL: Failed to load PF2e-items.json:", error);
+                document.getElementById('results').innerHTML = 
+                    `<p class="placeholder text-center p-8 text-red-500">
+                        <strong>Error: Could not load item data.</strong><br>
+                        File: <code>PF2e-items.json</code><br>
+                        Details: ${error.message}
+                    </p>`;
+                return; // Stop the script if we can't get items
+            }
+
+            // --- STEP 2: INITIALIZE APP ---
+            try {
+                // Now that we KNOW we have the items, try to start the app
+                initializeApp(items);
+
+            } catch (error) {
+                // This CATCH block is *only* for app initialization failures
+                console.error("CRITICAL: Failed to initialize application:", error);
+                document.getElementById('results').innerHTML = 
+                    `<p class="placeholder text-center p-8 text-red-500">
+                        <strong>Error: Application failed to start.</strong><br>
+                        This is likely a missing library (SlimSelect, noUiSlider) or a code bug.<br>
+                        <strong>Error Details:</strong> ${error.message}
+                    </p>`;
+            }
+        });
+
+        function initializeApp(items) {
+            // ... (The rest of your initializeApp function, from line 1058, remains IDENTICAL) ...
+            // --- SHARED REMASTER DATA ---
+            const remasterCore = ['Pathfinder Player Core', 'Pathfinder Player Core 2', 'Pathfinder GM Core', 'Pathfinder Monster Core', 'Pathfinder NPC Core'];
+            const remasterRulebooks = ['Pathfinder Battlecry!', 'Pathfinder Guns & Gears', 'Pathfinder Howl of the Wild', 'Pathfinder War of Immortals', 'Pathfinder Treasure Vault (Remastered)'];
+            const remasterBooks = [...remasterCore, ...remasterRulebooks];
+
+            // --- GLOBAL STATE ---
+            let currentFilteredItems = [];
+            const rarityOrder = { 'Common': 1, 'Uncommon': 2, 'Rare': 3, 'Unique': 4 };
+            let currentPage = 1;
+            const itemsPerPage = 50;
+            let inventory = [];
+            let inventoryGold = 0;
+            let lastGeneratedTreasure = null;
+
+            // --- DOM ELEMENTS ---
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            // Loot Finder
+            const nameSearchInput = document.getElementById('name-search');
+            const levelSliderFinderEl = document.getElementById('level-slider-finder');
+            const levelDisplayFinder = document.getElementById('level-display-finder');
+            const rulebookSelectFinderEl = document.getElementById('rulebook-select-finder');
+            const rarityContainer = document.getElementById('rarity-filters');
+            const typeSelectElement = document.getElementById('type-select');
+            const tagSelectElement = document.getElementById('tag-select');
+            const generateBtn = document.getElementById('generate-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const resultsContainer = document.getElementById('results');
+            const sortControls = document.getElementById('sort-controls');
+            const sortByDropdown = document.getElementById('sort-by');
+            const paginationControls = document.getElementById('pagination-controls');
+            const prevPageBtn = document.getElementById('prev-page-btn');
+            const nextPageBtn = document.getElementById('next-page-btn');
+            const pageInfo = document.getElementById('page-info');
+            
+            // Treasure Generator
+            const partyLevelSliderGeneratorEl = document.getElementById('party-level-slider-generator');
+            const levelDisplayGenerator = document.getElementById('level-display-generator');
+            const rulebookSelectGeneratorEl = document.getElementById('rulebook-select-generator');
+            const rarityContainerGenerator = document.getElementById('rarity-filters-generator');
+            const partySizeSliderElement = document.getElementById('party-size-slider');
+            const partySizeDisplay = document.getElementById('party-size-display');
+            const generateTreasureBtn = document.getElementById('generate-treasure-btn');
+            const resetBtnGenerator = document.getElementById('reset-btn-generator');
+            const treasureResultsContainer = document.getElementById('treasure-results');
+            const remasterOnlyToggle = document.getElementById('remaster-only-toggle');
+
+            // Inventory
+            const inventoryBtn = document.getElementById('inventory-btn');
+            const inventoryCount = document.getElementById('inventory-count');
+            const inventoryModal = document.getElementById('inventory-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const inventoryListContainer = document.getElementById('inventory-list');
+            const copyBtn = document.getElementById('copy-btn');
+            const exportFormatSelect = document.getElementById('export-format-select');
+            const clearInventoryBtn = document.getElementById('clear-inventory-btn');
+            const clipboardHelper = document.getElementById('clipboard-helper');
+            
+            let tagSelect, rulebookSelectFinder, rulebookSelectGenerator, typeSelect;
+
+            // --- INITIALIZE SLIDERS ---
+            const levelSliderFinder = noUiSlider.create(levelSliderFinderEl, {
+                start: [1, 5],
+                connect: true, 
+                step: 1,
+                range: { 'min': 0, 'max': 20 },
+                format: { to: value => Math.round(value), from: value => Number(value) }
+            });
+
+            const partyLevelSliderGenerator = noUiSlider.create(partyLevelSliderGeneratorEl, {
+                start: 1, 
+                step: 1,
+                range: { 'min': 1, 'max': 20 },
+                format: { to: value => Math.round(value), from: value => Number(value) }
+            });
+
+            const partySizeSlider = noUiSlider.create(partySizeSliderElement, {
+                start: 4, 
+                connect: [true, false], 
+                step: 1,
+                range: { 'min': 2, 'max': 8 },
+                format: { to: value => Math.round(value), from: value => Number(value) }
+            });
+            
+            // --- SLIDER UPDATES (DECOUPLED) ---
+            levelSliderFinder.on('update', (values) => {
+                levelDisplayFinder.textContent = `${values[0]} - ${values[1]}`;
+            });
+
+            partyLevelSliderGenerator.on('update', (values) => {
+                levelDisplayGenerator.textContent = values[0];
+            });
+
+            partySizeSlider.on('update', (values) => {
+                partySizeDisplay.textContent = values[0];
+            });
+
+            // --- TAB SWITCHING ---
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const tabName = button.dataset.tab;
+                    tabContents.forEach(content => {
+                        content.classList.toggle('active', content.id === `${tabName}-tab`);
+                    });
+                });
+            });
+
+            // --- TREASURE DATA & LOGIC ---
+            const currencyTable = {
+                1: { base: 40, perPC: 10 }, 2: { base: 70, perPC: 18 }, 3: { base: 120, perPC: 30 },
+                4: { base: 200, perPC: 50 }, 5: { base: 320, perPC: 80 }, 6: { base: 500, perPC: 125 },
+                7: { base: 720, perPC: 180 }, 8: { base: 1000, perPC: 250 }, 9: { base: 1400, perPC: 350 },
+                10: { base: 2000, perPC: 500 }, 11: { base: 2800, perPC: 700 }, 12: { base: 4000, perPC: 1000 },
+                13: { base: 6000, perPC: 1500 }, 14: { base: 9000, perPC: 2250 }, 15: { base: 13000, perPC: 3250 },
+                16: { base: 20000, perPC: 5000 }, 17: { base: 30000, perPC: 7500 }, 18: { base: 48000, perPC: 12000 },
+                19: { base: 80000, perPC: 20000 }, 20: { base: 140000, perPC: 35000 }
+            };
+
+            function getGeneratorFilters() {
+                return {
+                    selectedRulebooks: rulebookSelectGenerator.getSelected(),
+                    selectedRarities: [...document.querySelectorAll('input[name="rarity-generator"]:checked')].map(el => el.value),
+                    isRemasterOnly: remasterOnlyToggle.checked
+                };
+            }
+
+            function generateTreasure() {
+                const partyLevel = parseInt(partyLevelSliderGenerator.get(), 10);
+                const partySize = parseInt(partySizeSlider.get(), 10);
+                const { selectedRulebooks, selectedRarities, isRemasterOnly } = getGeneratorFilters();
+
+                if (!currencyTable[partyLevel]) {
+                    treasureResultsContainer.innerHTML = `<p class="placeholder text-center p-8 text-gray-500 italic">Please select a valid party level (1-20).</p>`;
+                    return;
+                }
+
+                let totalCurrency = currencyTable[partyLevel].base;
+                const partyDiff = partySize - 4;
+                if (partyDiff !== 0) {
+                    totalCurrency += currencyTable[partyLevel].perPC * partyDiff;
+                }
+                totalCurrency = Math.max(0, totalCurrency);
+
+                let permanentItemsToFind = [];
+                let consumableItemsToFind = [];
+
+                permanentItemsToFind.push({ level: partyLevel, count: 2 });
+                permanentItemsToFind.push({ level: partyLevel + 1, count: 2 });
+                consumableItemsToFind.push({ level: partyLevel - 1, count: 2 });
+                consumableItemsToFind.push({ level: partyLevel, count: 2 });
+                consumableItemsToFind.push({ level: partyLevel + 1, count: 2 });
+                
+                if (partyDiff > 0) {
+                    for (let i = 0; i < partyDiff; i++) {
+                        permanentItemsToFind.push({ level: partyLevel + 1, count: 1 });
+                        consumableItemsToFind.push({ level: partyLevel + 1, count: 1 });
+                        consumableItemsToFind.push({ level: partyLevel, count: 1 });
+                    }
+                } else if (partyDiff < 0) {
+                     for (let i = 0; i < Math.abs(partyDiff); i++) {
+                        if (permanentItemsToFind.length > 0) permanentItemsToFind[permanentItemsToFind.length -1].count--;
+                        if (consumableItemsToFind.length > 0) consumableItemsToFind[consumableItemsToFind.length -1].count--;
+                        if (consumableItemsToFind.length > 0) consumableItemsToFind[consumableItemsToFind.length -1].count--;
+                    }
+                }
+                
+                let availableItems = items.filter(item => 
+                    (selectedRulebooks.length === 0 || selectedRulebooks.includes(item.sourcebook)) &&
+                    (selectedRarities.length === 0 || selectedRarities.includes(item.rarity))
+                );
+
+                if (isRemasterOnly) {
+                    availableItems = availableItems.filter(item => remasterBooks.includes(item.sourcebook));
+                }
+
+                const permanentItemsPool = availableItems.filter(item => !item.tags.includes('consumable'));
+                const consumableItemsPool = availableItems.filter(item => item.tags.includes('consumable'));
+
+                const pickRandomItems = (pool, level, count) => {
+                    if (count <= 0) return [];
+                    const candidates = pool.filter(item => item.level === level);
+                    const results = [];
+                    let tempCandidates = [...candidates];
+                    for (let i = 0; i < count; i++) {
+                        if (tempCandidates.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * tempCandidates.length);
+                            results.push(tempCandidates.splice(randomIndex, 1)[0]);
+                        } else {
+                            results.push({name: `No unique item found at level ${level}`, level: level, rarity: 'N/A', sourcebook: 'N/A', tags: [], type: []});
+                        }
+                    }
+                    return results;
+                };
+
+                const generatedPermanent = permanentItemsToFind.flatMap(p => pickRandomItems(permanentItemsPool, p.level, p.count));
+                const generatedConsumable = consumableItemsToFind.flatMap(c => pickRandomItems(consumableItemsPool, c.level, c.count));
+                
+                lastGeneratedTreasure = {
+                    currency: totalCurrency,
+                    permanent: generatedPermanent,
+                    consumable: generatedConsumable
+                };
+
+                renderTreasureResults(lastGeneratedTreasure);
+            }
+
+            function renderTreasureResults(treasure) {
+                const renderItemList = (title, items, type) => {
+                    if (items.length === 0) return '';
+                    const itemsHTML = items.map((item, index) => {
+                         if (item && item.name) {
+                            return createTreasureItemHTML(item, index, type);
+                         }
+                         return '';
+                    }).join('');
+                    return `<div class="items-section"><h3 class="font-title themed-header text-2xl border-b themed-border pb-2 mb-2">${title}</h3><ul class="grid gap-1">${itemsHTML}</ul></div>`;
+                };
+
+                const currencyHTML = `<div class="currency-section"><h3 class="font-title themed-header text-2xl border-b themed-border pb-2 mb-2">Currency</h3><p class="text-lg">${treasure.currency.toLocaleString()} gp</p></div>`;
+                const permanentItemsHTML = renderItemList('Permanent Items', treasure.permanent, 'permanent');
+                const consumableItemsHTML = renderItemList('Consumable Items', treasure.consumable, 'consumable');
+                const addAllButtonHTML = `<div class="mt-4"><button class="add-treasure-to-inventory-btn w-full themed-accent-bg font-bold py-2 px-4 rounded-md">Add All to Inventory</button></div>`;
+                
+                treasureResultsContainer.innerHTML = `<div class="themed-card border rounded-lg p-6 shadow-sm grid gap-4">${currencyHTML}${permanentItemsHTML}${consumableItemsHTML}${addAllButtonHTML}</div>`;
+            }
+
+            function createTreasureItemHTML(item, index, type) {
+                const isInInventory = inventory.some(invEntry => invEntry.item.name === item.name);
+                const typesHTML = `<strong class="font-bold">${(item.type || []).join(', ')}</strong>`;
+                const tagsHTML = (item.tags || []).map(tag => `<span class="themed-tag-bg inline-block px-2 py-1 rounded-full text-xs">${tag}</span>`).join(' ');
+                const isPlaceholder = item.name.startsWith('No unique item');
+
+                return `
+                <li id="treasure-item-${type}-${index}" data-item-name="${item.name}" class="py-1">
+                    <div class="flex items-center gap-2">
+                        ${isPlaceholder ? '<div class="w-5 h-5"></div>' : `
+                        <button class="reroll-btn flex-shrink-0" data-item-index="${index}" data-item-type="${type}" title="Reroll this item">
+                            <svg class="h-5 w-5" viewBox="-22 -8 24 24" fill="currentcolor">
+                                <g transform="matrix(1,0,0,1,0,0)">
+                                    <path d="M-19.416,0.024C-19.42,-0.105 -19.391,-0.238 -19.324,-0.36C-19.252,-0.492 -19.147,-0.593 -19.024,-0.659L-9.718,-6.033C-9.603,-6.101 -9.47,-6.139 -9.333,-6.139C-9.196,-6.139 -9.063,-6.101 -8.948,-6.033L0.367,-0.654C0.486,-0.588 0.588,-0.488 0.658,-0.36C0.66,-0.357 0.662,-0.353 0.664,-0.35C0.722,-0.238 0.75,-0.118 0.75,0L0.75,10.756C0.754,10.895 0.719,11.034 0.647,11.157C0.576,11.278 0.474,11.375 0.354,11.439L-8.958,16.816C-8.981,16.829 -9.005,16.841 -9.03,16.852C-9.082,16.875 -9.138,16.893 -9.196,16.903C-9.287,16.92 -9.379,16.92 -9.47,16.903C-9.528,16.893 -9.584,16.875 -9.636,16.852C-9.661,16.841 -9.685,16.829 -9.708,16.816L-19.041,11.427C-19.155,11.361 -19.248,11.267 -19.313,11.157C-19.38,11.042 -19.416,10.911 -19.416,10.777L-19.416,0.024ZM-12.234,-2.848L-17.136,-0.017L-15.219,1.033L-12.234,-2.848ZM-1.53,-0.017L-6.433,-2.849L-3.448,1.033L-1.53,-0.017ZM-0.75,7.021L-0.75,1.266L-2.7,2.334L-0.75,7.021ZM-8.583,14.867L-3.499,11.931L-8.583,12.511L-8.583,14.867ZM-15.167,11.931L-10.083,14.867L-10.083,12.512L-15.167,11.931ZM-17.916,1.266L-17.916,7.02L-15.967,2.334L-17.916,1.266ZM-5.174,1.25L-9.333,-4.159L-13.493,1.25L-5.174,1.25ZM-14.906,3.689L-17.591,10.145L-10.727,10.929L-14.906,3.689ZM-7.94,10.928L-1.075,10.145L-3.76,3.69L-7.94,10.928ZM-4.95,2.75L-13.717,2.75L-9.334,10.342L-4.95,2.75Z"/>
+                                </g>
+                            </svg>
+                        </button>
+                        `}
+                        <div class="flex-grow">
+                            <strong class="treasure-item-name has-tooltip">
+                                ${item.name}
+                                ${isPlaceholder ? '' : `
+                                <div class="tooltip">
+                                    <div class="mb-2">${typesHTML || 'N/A'}</div>
+                                    <div class="flex flex-wrap gap-1 mb-2">${tagsHTML || 'None'}</div>
+                                    <button class="toggle-details-btn-treasure themed-accent-text font-bold hover:underline w-full text-left">Show Details</button>
+                                </div>
+                                `}
+                            </strong> 
+                            (Level ${item.level}, ${item.rarity}) - <em>${item.sourcebook}</em>
+                        </div>
+                        ${isPlaceholder ? '' : `
+                        <button class="add-treasure-item-to-inventory-btn themed-accent-bg font-bold py-1 px-2 text-xs rounded-md ml-auto flex-shrink-0" ${isInInventory ? 'disabled' : ''}>
+                            ${isInInventory ? 'Added' : 'Add'}
+                        </button>
+                        `}
+                    </div>
+                    <div class="description hidden mt-2 pt-2 pb-2 themed-border border-t border-b ml-7">
+                        <div class="description-content leading-relaxed"><p class="italic text-gray-500">Loading details...</p></div>
+                    </div>
+                </li>`;
+            }
+
+            function handleReroll(itemType, itemIndex) {
+                if (!lastGeneratedTreasure) return;
+
+                const oldItem = lastGeneratedTreasure[itemType][itemIndex];
+                if (!oldItem) return;
+
+                const { selectedRulebooks, selectedRarities, isRemasterOnly } = getGeneratorFilters();
+                
+                let availableItems = items.filter(item => 
+                    (selectedRulebooks.length === 0 || selectedRulebooks.includes(item.sourcebook)) &&
+                    (selectedRarities.length === 0 || selectedRarities.includes(item.rarity)) &&
+                    item.level === oldItem.level
+                );
+
+                if (isRemasterOnly) {
+                    availableItems = availableItems.filter(item => remasterBooks.includes(item.sourcebook));
+                }
+
+                const isConsumable = itemType === 'consumable';
+                const itemPool = availableItems.filter(item => item.tags.includes('consumable') === isConsumable);
+
+                const currentItemNames = [...lastGeneratedTreasure.permanent, ...lastGeneratedTreasure.consumable].map(i => i.name);
+                const candidatePool = itemPool.filter(item => !currentItemNames.includes(item.name));
+                
+                if (candidatePool.length > 0) {
+                    const newItem = candidatePool[Math.floor(Math.random() * candidatePool.length)];
+                    
+                    lastGeneratedTreasure[itemType][itemIndex] = newItem;
+                    const oldLiElement = document.getElementById(`treasure-item-${itemType}-${itemIndex}`);
+                    if (oldLiElement) {
+                        oldLiElement.outerHTML = createTreasureItemHTML(newItem, itemIndex, itemType);
+                    }
+                } else {
+                    const rerollButton = document.querySelector(`#treasure-item-${itemType}-${itemIndex} .reroll-btn`);
+                    if (rerollButton) {
+                        rerollButton.style.opacity = '0.2';
+                        rerollButton.disabled = true;
+                    }
+                }
+            }
+
+            // --- FILTER POPULATION ---
+            function populateFilters() {
+                const rarities = Object.keys(rarityOrder);
+                const allRulebooks = [...new Set(items.map(item => item.sourcebook))].filter(Boolean).sort();
+                
+                const legacyCore =['Pathfinder Core Rulebook', 'Pathfinder Advanced Player\'s Guide', 'Pathfinder Gamemastery Guide', 'Pathfinder Bestiary', 'Pathfinder Bestiary 2', 'Pathfinder Bestiary 3'];
+                const legacyRulebooks = ['Pathfinder Treasure Vault', 'Pathfinder Secrets of Magic', 'Pathfinder Rage of Elements', 'Pathfinder Dark Archive', 'Pathfinder Book of the Dead'];
+
+                const categorizedRulebooks = {
+                    "Core Books (Remaster)": [...new Set(remasterCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Remaster)": [...new Set(remasterRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Core Books (Legacy)": [...new Set(legacyCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Legacy)": [...new Set(legacyRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Lost Omens": [], "Adventure Paths": [], "Adventures": [], "Other": []
+                };
+
+                const mainBooks = new Set([...remasterCore, ...remasterRulebooks, ...legacyCore, ...legacyRulebooks]);
+
+                allRulebooks.forEach(book => {
+                    if (mainBooks.has(book)) return;
+                    if (book.includes('Lost Omens')) categorizedRulebooks["Lost Omens"].push(book);
+                    else if (book.startsWith('Pathfinder Adventure:') || book.includes('Kingmaker') || book.includes('Claws of the Tyrant')) categorizedRulebooks["Adventure Paths"].push(book);
+                    else if (/^Pathfinder #\d+:/.test(book) || book.includes('Society') || book.includes('Bounty') || book.includes('Quest')) categorizedRulebooks["Adventures"].push(book);
+                    else categorizedRulebooks["Other"].push(book);
+                });
+
+                const allItemTypes = [...new Set(items.flatMap(item => item.type))].filter(Boolean).sort();
+                const categorizedItemTypes = {
+                    "Armor by Category": ["Unarmored", "Light", "Medium", "Heavy", "Shield"],
+                    "Armor by Type": ["Chain", "Cloth", "Composite", "Leather", "Plate", "Skeletal", "Wood"],
+                    "Weapons by Category": ["Unarmed", "Simple", "Martial", "Advanced"],
+                    "Weapons by Type": ["Ammo", "Axe", "Bomb", "Bow", "Brawling", "Club", "Crossbow", "Dart", "Firearm", "Flail", "Hammer", "Knife", "Pick", "Polearm", "Sling", "Spear", "Sword"],
+                    "Worn Items": ["Clothing", "Cloak", "Footwear", "Headwear", "Armwear", "Neckwear", "Ring", "Backpack", "Mount Items"],
+                    "Runes & Modifications": ["Armor Modification", "Shield Modification", "Weapon Modification", "Item Modification", "Other Modification", "Tattoo", "Fulu", "Talisman", "Implanted"],
+                    "Consumables": ["Potion", "Elixir", "Poison", "Talisman", "Ammunition", "Oil", "Drug", "Mutagen", "Snare"],
+                    "Magical Items": ["Staff", "Wand", "Scroll", "Catalyst"],
+                };
+
+                const allTags = [...new Set(items.flatMap(item => item.tags))].filter(Boolean).sort();
+                const categorizedTags = {
+                    "Remastered Content": ["Remaster"],
+                    "Magical Tradition": ["Arcane", "Divine", "Occult", "Primal"],
+                    "Item Properties": ["Alchemical", "Artifact", "Auditory", "Clockwork", "Companion", "Contract", "Cursed", "Drug", "Elixir", "Extradimensional", "Fulu", "Gadget", "Grimoire", "Implanted", "Intelligent", "Invested", "Light", "Lit", "Magical", "Mutagen", "Oil", "Poison", "Potion", "Precious", "Relic", "Snare", "Spellheart", "Staff", "Structure", "Talisman", "Tattoo", "Teleportation", "Trap", "Wand"],
+                    "Weapon Properties": ["Agile", "Backstabber", "Backswing", "Brace", "Climbing", "Cobbled", "Combination", "Concussive", "Deadly", "Disarm", "Fatal", "Finesse", "Forceful", "Free-Hand", "Grapple", "Hampering", "Jousting", "Kickback", "Modular", "Mounted", "Nonlethal", "Parry", "Propulsive", "Range", "Reach", "Scatter", "Shove", "Sweep", "Tethered", "Thrown", "Trip", "Twin", "Two-Hand", "Unarmed", "Versatile", "Volley"],
+                    "Ancestries": ["Dwarf", "Elf", "Gnome", "Goblin", "Halfling", "Orc", "Human", "Android", "Automaton", "Azarketi", "Catfolk", "Changeling", "Dhampir", "Duskwalker", "Fleshwarp", "Ganzi", "Geniekin", "Gnoll", "Grippli", "Hobgoblin", "Kitsune", "Kobold", "Leshy", "Lizardfolk", "Nagaji", "Orc", "Poppet", "Ratfolk", "Shisk", "Shoony", "Skeleton", "Sprite", "Strix", "Tengu", "Vanara", "Vishkanya"],
+                    "Elements": ["Acid", "Air", "Cold", "Darkness", "Earth", "Electricity", "Fire", "Force", "Holy", "Light", "Metal", "Negative", "Positive", "Shadow", "Sonic", "Unholy", "Void", "Water", "Wood"],
+                    "Other": []
+                };
+
+                const categorizedTypesSet = new Set(Object.values(categorizedItemTypes).flat());
+                categorizedItemTypes["Other"] = allItemTypes.filter(type => !categorizedTypesSet.has(type));
+                
+                const categorizedTagsSet = new Set(Object.values(categorizedTags).flat().map(t => t.toLowerCase()));
+                categorizedTags["Other"] = allTags.filter(tag => !categorizedTagsSet.has(tag.toLowerCase()));
+
+
+                rarityContainer.innerHTML = rarities.map(rarity => `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="rarity" value="${rarity}" class="h-4 w-4 rounded themed-border" checked><span>${rarity}</span></label>`).join('');
+                rarityContainerGenerator.innerHTML = rarities.map(rarity => `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="rarity-generator" value="${rarity}" class="h-4 w-4 rounded themed-border" checked><span>${rarity}</span></label>`).join('');
+                
+                let rulebookHTML = '';
+                for (const category in categorizedRulebooks) {
+                    if (categorizedRulebooks[category].length > 0) {
+                        rulebookHTML += `<optgroup label="${category}">${categorizedRulebooks[category].map(book => `<option value="${book}">${book}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                rulebookSelectFinderEl.innerHTML = rulebookHTML;
+                rulebookSelectGeneratorEl.innerHTML = rulebookHTML;
+                
+                let typeHTML = '';
+                for (const category in categorizedItemTypes) {
+                    const typesInCategory = categorizedItemTypes[category].filter(type => allItemTypes.includes(type));
+                    if (typesInCategory.length > 0) {
+                        typeHTML += `<optgroup label="${category}">${typesInCategory.map(type => `<option value="${type}">${type}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                typeSelectElement.innerHTML = typeHTML;
+                
+                let tagHTML = '';
+                for (const category in categorizedTags) {
+                    const tagsInCategory = categorizedTags[category].filter(tag => allTags.includes(tag.toLowerCase()));
+                    if (tagsInCategory.length > 0) {
+                        tagHTML += `<optgroup label="${category}">${tagsInCategory.map(tag => `<option value="${tag.toLowerCase()}">${tag}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                tagSelectElement.innerHTML = tagHTML;
+
+                rulebookSelectFinder = new SlimSelect({ 
+                    select: '#rulebook-select-finder', 
+                    settings: { placeholderText: 'Select rulebooks... (Optional)' }
+                });
+                rulebookSelectGenerator = new SlimSelect({ 
+                    select: '#rulebook-select-generator', 
+                    settings: { placeholderText: 'Select rulebooks... (Optional)' }
+                });
+                typeSelect = new SlimSelect({ select: '#type-select', settings: { placeholderText: 'Select item types...' } });
+                tagSelect = new SlimSelect({ select: '#tag-select', settings: { placeholderText: 'Select tags...' } });
+            }
+
+            // --- LOOT FINDER LOGIC ---
+            function resetFilters() {
+                nameSearchInput.value = '';
+                levelSliderFinder.set([1, 5]);
+                document.querySelectorAll('input[name="rarity"]').forEach(cb => cb.checked = true);
+                document.querySelector('input[name="item-category"][value="all"]').checked = true;
+                rulebookSelectFinder.setSelected([]);
+                typeSelect.setSelected([]);
+                tagSelect.setSelected([]);
+                generateLoot();
+            }
+            
+            function resetTreasureFilters() {
+                partyLevelSliderGenerator.set(1);
+                partySizeSlider.set(4);
+                rulebookSelectGenerator.setSelected([]);
+                document.querySelectorAll('input[name="rarity-generator"]').forEach(cb => cb.checked = true);
+                remasterOnlyToggle.checked = false;
+                treasureResultsContainer.innerHTML = `<p class="placeholder text-center p-8 text-gray-500 italic">Your generated treasure parcel will appear here.</p>`;
+            }
+
+            function generateLoot() {
+                currentPage = 1;
+                const [minLevel, maxLevel] = levelSliderFinder.get();
+                const searchTerm = nameSearchInput.value.toLowerCase();
+                const selectedRarities = [...document.querySelectorAll('input[name="rarity"]:checked')].map(el => el.value);
+                const selectedCategory = document.querySelector('input[name="item-category"]:checked').value;
+                const selectedRulebooks = rulebookSelectFinder.getSelected();
+                const selectedTypes = typeSelect.getSelected();
+                const selectedTags = tagSelect.getSelected();
+                
+                currentFilteredItems = items.filter(item => {
+                    const nameMatch = item.name.toLowerCase().includes(searchTerm);
+                    const levelMatch = item.level >= minLevel && item.level <= maxLevel;
+                    const rarityMatch = selectedRarities.length === 0 || selectedRarities.includes(item.rarity);
+                    const rulebookMatch = selectedRulebooks.length === 0 || selectedRulebooks.includes(item.sourcebook);
+                    const typeMatch = selectedTypes.length === 0 || selectedTypes.some(st => item.type.includes(st));
+                    const tagMatch = selectedTags.length === 0 || selectedTags.every(tag => item.tags.includes(tag));
+                    const categoryMatch = selectedCategory === 'all' ||
+                                          (selectedCategory === 'permanent' && !item.tags.includes('consumable')) ||
+                                          (selectedCategory === 'consumable' && item.tags.includes('consumable'));
+                    return nameMatch && levelMatch && rarityMatch && rulebookMatch && typeMatch && tagMatch && categoryMatch;
+                });
+                sortAndRenderResults();
+            }
+
+            function sortAndRenderResults() {
+                const sortBy = sortByDropdown.value;
+                let sortedItems = [...currentFilteredItems];
+                switch (sortBy) {
+                    case 'level-asc': sortedItems.sort((a, b) => a.level - b.level); break;
+                    case 'level-desc': sortedItems.sort((a, b) => b.level - a.level); break;
+                    case 'name-asc': sortedItems.sort((a, b) => a.name.localeCompare(b.name)); break;
+                    case 'rarity': sortedItems.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0)); break;
+                }
+                renderResults(sortedItems);
+            }
+
+            function renderResults(filteredItems) {
+                if (filteredItems.length === 0) {
+                    resultsContainer.innerHTML = `<p class="placeholder text-center p-8 text-gray-500 italic">No items found.</p>`;
+                    sortControls.classList.add('hidden');
+                    paginationControls.classList.add('hidden');
+                    return;
+                }
+                
+                sortControls.classList.remove('hidden');
+                sortControls.classList.add('flex');
+                
+                const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+                if (totalPages > 1) {
+                    paginationControls.classList.remove('hidden');
+                    paginationControls.classList.add('flex');
+                    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+                    prevPageBtn.disabled = currentPage === 1;
+                    nextPageBtn.disabled = currentPage === totalPages;
+                } else {
+                    paginationControls.classList.add('hidden');
+                }
+                
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const itemsToDisplay = filteredItems.slice(startIndex, startIndex + itemsPerPage);
+
+                const cardsHTML = itemsToDisplay.map(item => {
+                    const tagsHTML = (item.tags || []).map(tag => `<span class="themed-tag-bg inline-block px-2 py-1 rounded-full text-xs mr-1 mb-1">${tag}</span>`).join(' ');
+                    const isInInventory = inventory.some(invEntry => invEntry.item.name === item.name);
+                    return `
+                    <div class="item-card themed-card border rounded-lg p-4 shadow-sm flex flex-col" data-item-name="${item.name}">
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h3 class="font-title themed-header text-2xl">${item.name}</h3>
+                                <span class="text-base font-bold themed-header ml-4 text-right flex-shrink-0">Level ${item.level} | ${item.rarity}</span>
+                            </div>
+                            <div class="meta flex justify-between items-baseline text-sm italic text-gray-500 dark:text-gray-400 mb-3">
+                                <span>${item.sourcebook}</span>
+                                <span class="font-bold ml-4">${item.price ? `Price: ${item.price}` : ''}</span>
+                            </div>
+                            <div class="tags mb-3">${tagsHTML}</div>
+                            <div class="description hidden mt-3 pt-3 themed-border border-t">
+                                <div class="description-content leading-relaxed"><p class="italic text-gray-500">Loading details...</p></div>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-3 flex justify-between items-center themed-border border-t">
+                             <button class="toggle-details-btn themed-accent-text font-bold hover:underline">Show Details</button>
+                             <button class="add-to-inventory-btn themed-accent-bg font-bold py-2 px-4 rounded-md transition-colors duration-200" ${isInInventory ? 'disabled' : ''}>
+                                ${isInInventory ? 'Added' : 'Add to Inventory'}
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+
+                resultsContainer.innerHTML = cardsHTML;
+            }
+
+            // --- INVENTORY LOGIC (WITH LOCALSTORAGE) ---
+            function saveInventory() {
+                try {
+                    const inventoryData = {
+                        items: inventory,
+                        gold: inventoryGold
+                    };
+                    localStorage.setItem('pf2eLootInventory', JSON.stringify(inventoryData));
+                } catch (e) {
+                    console.error("Failed to save inventory to localStorage:", e);
+                }
+            }
+
+            function loadInventory() {
+                try {
+                    const savedData = localStorage.getItem('pf2eLootInventory');
+                    if (savedData) {
+                        const inventoryData = JSON.parse(savedData);
+                        inventory = inventoryData.items || [];
+                        inventoryGold = inventoryData.gold || 0;
+                        updateInventoryCount();
+                    }
+                } catch (e) {
+                    console.error("Failed to load inventory from localStorage:", e);
+                    inventory = [];
+                    inventoryGold = 0;
+                }
+            }
+
+            function updateInventoryCount() { inventoryCount.textContent = inventory.length; }
+            
+            function addToInventory(itemName, skipSave = false) {
+                const itemToAdd = items.find(item => item.name === itemName);
+                if (itemToAdd && !inventory.some(invEntry => invEntry.item.name === itemName)) {
+                    inventory.push({ item: itemToAdd, quantity: 1 });
+                    updateInventoryCount();
+                    if (!skipSave) saveInventory();
+                    const cardButton = document.querySelector(`.item-card[data-item-name="${itemName}"] .add-to-inventory-btn`);
+                    if (cardButton) {
+                        cardButton.textContent = 'Added';
+                        cardButton.disabled = true;
+                    }
+                    const treasureButton = document.querySelector(`#treasure-results li[data-item-name="${itemName}"] .add-treasure-item-to-inventory-btn`);
+                    if (treasureButton) {
+                        treasureButton.textContent = 'Added';
+                        treasureButton.disabled = true;
+                    }
+                }
+            }
+            function removeFromInventory(itemName) {
+                inventory = inventory.filter(invEntry => invEntry.item.name !== itemName);
+                updateInventoryCount();
+                saveInventory();
+                renderInventoryModal();
+                const cardButton = document.querySelector(`.item-card[data-item-name="${itemName}"] .add-to-inventory-btn`);
+                if (cardButton) {
+                    cardButton.textContent = 'Add to Inventory';
+                    cardButton.disabled = false;
+                }
+                 const treasureButton = document.querySelector(`#treasure-results li[data-item-name="${itemName}"] .add-treasure-item-to-inventory-btn`);
+                if (treasureButton) {
+                    treasureButton.textContent = 'Add';
+                    treasureButton.disabled = false;
+                }
+            }
+            function changeQuantity(itemName, amount) {
+                const inventoryEntry = inventory.find(invEntry => invEntry.item.name === itemName);
+                if (inventoryEntry) {
+                    inventoryEntry.quantity += amount;
+                    if (inventoryEntry.quantity <= 0) {
+                        removeFromInventory(itemName);
+                    } else {
+                        saveInventory();
+                        renderInventoryModal();
+                    }
+                }
+            }
+            function clearInventory() {
+                inventory = [];
+                inventoryGold = 0;
+                updateInventoryCount();
+                saveInventory();
+                renderInventoryModal();
+                document.querySelectorAll('.add-to-inventory-btn, .add-treasure-item-to-inventory-btn').forEach(btn => {
+                    btn.textContent = btn.classList.contains('add-to-inventory-btn') ? 'Add to Inventory' : 'Add';
+                    btn.disabled = false;
+                });
+            }
+            function getSortedInventory() {
+                const sortFn = (a, b) => a.item.name.localeCompare(b.item.name);
+                return {
+                    permanent: inventory.filter(e => !e.item.tags.includes('consumable')).sort(sortFn),
+                    consumable: inventory.filter(e => e.item.tags.includes('consumable')).sort(sortFn)
+                };
+            }
+
+            function renderInventoryModal() {
+                let modalHTML = `
+                    <div class="mb-4">
+                        <label for="inventory-gold-input" class="font-bold text-lg themed-header">Party Gold (gp)</label>
+                        <input type="number" id="inventory-gold-input" class="w-full p-2 themed-border border rounded themed-card-bg mt-1" value="${inventoryGold}" placeholder="0">
+                    </div>`;
+
+                if(inventory.length === 0 && inventoryGold === 0) {
+                    modalHTML += '<p class="text-gray-500 italic">Your inventory is empty.</p>';
+                    inventoryListContainer.innerHTML = modalHTML;
+                    return;
+                }
+
+                const createItemEntryHTML = (invEntry) => {
+                    const { item, quantity } = invEntry;
+                    return `
+                    <div class="flex justify-between items-center py-2 themed-border border-b">
+                        <div class="flex-1">
+                            <p class="font-bold">${item.name} (Lvl ${item.level})</p>
+                            <p class="text-sm text-gray-500">${item.sourcebook}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="quantity-change-btn themed-accent-bg font-bold w-6 h-6 rounded-full" data-item-name="${item.name}" data-amount="-1">-</button>
+                            <span class="font-mono font-bold w-8 text-center">${quantity}</span>
+                            <button class="quantity-change-btn themed-accent-bg font-bold w-6 h-6 rounded-full" data-item-name="${item.name}" data-amount="1">+</button>
+                            <button class="remove-from-inventory-btn themed-danger-bg text-white font-bold text-xs py-1 px-2 rounded ml-2" data-item-name="${item.name}">Remove</button>
+                        </div>
+                    </div>`;
+                };
+                
+                const { permanent: permanentItems, consumable: consumableItems } = getSortedInventory();
+
+                if (permanentItems.length > 0) {
+                    modalHTML += `<h4 class="font-bold text-lg themed-header mt-4 mb-2 first:mt-0">Permanent Items</h4>`;
+                    modalHTML += permanentItems.map(createItemEntryHTML).join('');
+                }
+                if (consumableItems.length > 0) {
+                    modalHTML += `<h4 class="font-bold text-lg themed-header mt-4 mb-2 first:mt-0">Consumable Items</h4>`;
+                    modalHTML += consumableItems.map(createItemEntryHTML).join('');
+                }
+
+                inventoryListContainer.innerHTML = modalHTML;
+
+                // Re-attach listener for the gold input after rendering
+                document.getElementById('inventory-gold-input').addEventListener('change', (e) => {
+                    inventoryGold = parseInt(e.target.value, 10) || 0;
+                    saveInventory();
+                });
+            }
+            function openModal() {
+                renderInventoryModal();
+                inventoryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    inventoryModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+                    inventoryModal.classList.remove('opacity-0');
+                }, 10);
+            }
+            function closeModal() {
+                inventoryModal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
+                inventoryModal.classList.add('opacity-0');
+                setTimeout(() => inventoryModal.classList.add('hidden'), 300);
+            }
+            function copyFormattedTextToClipboard() {
+                if (inventory.length === 0 && inventoryGold === 0) return;
+                const format = exportFormatSelect.value;
+                const { permanent: permanentItems, consumable: consumableItems } = getSortedInventory();
+                let markdownParts = [];
+
+                if (inventoryGold > 0) {
+                    markdownParts.push(format === 'plaintext' ? 'Currency' : '**Currency**', `- ${inventoryGold.toLocaleString()} gp`);
+                }
+
+                const formatItem = (invEntry) => {
+                    const { item, quantity } = invEntry;
+                    const quantityText = quantity > 1 ? ` x ${quantity}` : '';
+                    let nameText = item.name;
+                    if (format === 'obsidian') {
+                        nameText = `[[${item.name}]]`;
+                    } else if (format === 'discord') {
+                        nameText = `[${item.name}](<${item.aon_link}>)`;
+                    }
+                    return `- ${nameText}${quantityText} (Lvl ${item.level})`;
+                };
+                if (permanentItems.length > 0) {
+                    if (markdownParts.length > 0) markdownParts.push(''); 
+                    markdownParts.push(format === 'plaintext' ? 'Permanent Items' : '**Permanent Items**', ...permanentItems.map(formatItem));
+                }
+                if (consumableItems.length > 0) {
+                    if (markdownParts.length > 0) markdownParts.push(''); 
+                    markdownParts.push(format === 'plaintext' ? 'Consumable Items' : '**Consumable Items**', ...consumableItems.map(formatItem));
+                }
+                clipboardHelper.value = markdownParts.join('\n');
+                clipboardHelper.select();
+                
+                // Note: execCommand is deprecated but is the most reliable method for local files 
+                // and environments where the more modern navigator.clipboard API may be restricted.
+                document.execCommand('copy');
+                
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg> Copied!`;
+                setTimeout(() => copyBtn.innerHTML = originalText, 2000);
+            }
+
+            // --- LAZY LOAD DESCRIPTION (GENERIC) ---
+            async function loadDescription(container) {
+                const itemName = container.dataset.itemName;
+                const contentDiv = container.querySelector('.description-content');
+                if (container.dataset.detailsLoaded === 'true' || !itemName) return;
+                
+                try {
+                    const item = items.find(i => i.name === itemName);
+                    if (!item) throw new Error('Item data not found');
+                    const fileName = item.name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-');
+                    const response = await fetch(`item_data/descriptions/${fileName}.json`);
+                    if (!response.ok) throw new Error('Description file not found');
+                    const data = await response.json();
+                    contentDiv.innerHTML = data.description;
+                    
+                    const footerDiv = document.createElement('div');
+                    footerDiv.className = 'flex justify-between items-center mt-4';
+
+                    const aonLink = document.createElement('a');
+                    aonLink.href = item.aon_link;
+                    aonLink.target = '_blank';
+                    aonLink.className = 'themed-accent-text font-bold hover:underline';
+                    aonLink.innerHTML = 'View on Archives of Nethys ↗';
+
+                    footerDiv.appendChild(aonLink);
+                    contentDiv.appendChild(footerDiv);
+
+                    container.dataset.detailsLoaded = 'true';
+                } catch (error) {
+                    contentDiv.innerHTML = '<p class="text-red-500">Could not load description.</p>';
+                    console.error(`Failed to load description for ${itemName}:`, error);
+                }
+            }
+
+            // --- EVENT LISTENERS (USING EVENT DELEGATION) ---
+            resultsContainer.addEventListener('click', (e) => {
+                const target = e.target;
+                const card = target.closest('.item-card');
+                if (!card) return;
+
+                const toggleBtn = target.closest('.toggle-details-btn');
+                if (target.closest('.add-to-inventory-btn')) {
+                    addToInventory(card.dataset.itemName);
+                } else if (toggleBtn) {
+                    const descriptionDiv = card.querySelector('.description');
+                    const isHidden = descriptionDiv.classList.contains('hidden');
+                    if (isHidden) {
+                        loadDescription(card);
+                        descriptionDiv.classList.remove('hidden');
+                        toggleBtn.textContent = 'Hide Details';
+                    } else {
+                        descriptionDiv.classList.add('hidden');
+                        toggleBtn.textContent = 'Show Details';
+                    }
+                }
+            });
+
+            treasureResultsContainer.addEventListener('click', (e) => {
+                const target = e.target;
+                const rerollBtn = target.closest('.reroll-btn');
+                const addItemBtn = target.closest('.add-treasure-item-to-inventory-btn');
+                const addAllBtn = target.closest('.add-treasure-to-inventory-btn');
+                const detailsBtn = target.closest('.toggle-details-btn-treasure');
+
+                if (rerollBtn) {
+                    const { itemType, itemIndex } = rerollBtn.dataset;
+                    handleReroll(itemType, parseInt(itemIndex, 10));
+                } else if (addItemBtn) {
+                    const listItem = addItemBtn.closest('li');
+                    if(listItem) addToInventory(listItem.dataset.itemName);
+                } else if (addAllBtn) {
+                    if (lastGeneratedTreasure) {
+                        inventoryGold += lastGeneratedTreasure.currency;
+                        const allItems = [...lastGeneratedTreasure.permanent, ...lastGeneratedTreasure.consumable];
+                        allItems.forEach(item => {
+                            if (item && item.name && !item.name.startsWith('No unique item')) {
+                                addToInventory(item.name, true);
+                            }
+                        });
+                        saveInventory();
+                        addAllBtn.textContent = 'Added to Inventory!';
+                        addAllBtn.disabled = true;
+                    }
+                } else if (detailsBtn) {
+                    const listItem = detailsBtn.closest('li');
+                    if (listItem) {
+                        const descriptionDiv = listItem.querySelector('.description');
+                        const isHidden = descriptionDiv.classList.contains('hidden');
+                        if (isHidden) {
+                            loadDescription(listItem);
+                            descriptionDiv.classList.remove('hidden');
+                            detailsBtn.textContent = 'Hide Details';
+                        } else {
+                            descriptionDiv.classList.add('hidden');
+                            detailsBtn.textContent = 'Show Details';
+                        }
+                    }
+                }
+            });
+            
+            inventoryModal.addEventListener('click', (e) => {
+                const target = e.target;
+                if (target === inventoryModal) {
+                    closeModal();
+                    return;
+                }
+                
+                const button = target.closest('button');
+                if (button) {
+                     if (button.classList.contains('remove-from-inventory-btn')) removeFromInventory(button.dataset.itemName);
+                     else if (button.classList.contains('quantity-change-btn')) changeQuantity(button.dataset.itemName, parseInt(button.dataset.amount, 10));
+                }
+            });
+
+            // --- GENERAL LISTENERS ---
+            inventoryBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            copyBtn.addEventListener('click', copyFormattedTextToClipboard);
+            clearInventoryBtn.addEventListener('click', clearInventory);
+            generateBtn.addEventListener('click', generateLoot);
+            generateTreasureBtn.addEventListener('click', generateTreasure);
+            resetBtn.addEventListener('click', resetFilters);
+            resetBtnGenerator.addEventListener('click', resetTreasureFilters);
+            sortByDropdown.addEventListener('change', sortAndRenderResults);
+            prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; sortAndRenderResults(); resultsContainer.scrollIntoView({ behavior: 'smooth' }); } });
+            nextPageBtn.addEventListener('click', () => { const totalPages = Math.ceil(currentFilteredItems.length / itemsPerPage); if (currentPage < totalPages) { currentPage++; sortAndRenderResults(); resultsContainer.scrollIntoView({ behavior: 'smooth' }); } });
+            
+            // --- INITIALIZE ---
+            loadInventory();
+            populateFilters();
+        }
+    </script>
+</body>
+</html>

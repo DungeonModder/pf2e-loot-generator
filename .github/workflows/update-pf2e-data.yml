@@ -1,0 +1,47 @@
+name: Update PF2e Item Data
+
+# Runs on a weekly schedule and whenever triggered manually.
+# The script itself checks whether the pf2e repo has changed since the last run
+# and exits early (no commit) if nothing is new.
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Every Monday at 06:00 UTC
+  workflow_dispatch:        # Allow manual trigger from the Actions tab
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Required to commit updated data back to the repo
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run data updater
+        env:
+          # Optional: add a secret named FOUNDRY_GITHUB_TOKEN in your repo's
+          # Settings → Secrets & variables → Actions for higher API rate limits.
+          GITHUB_TOKEN_OVERRIDE: ${{ secrets.FOUNDRY_GITHUB_TOKEN }}
+        run: node update-data.js
+        # The script exits cleanly (no error) when there's nothing new to commit.
+
+      - name: Commit updated data if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add item_data/
+          # Only commit if something actually changed
+          if git diff --staged --quiet; then
+            echo "No data changes to commit."
+          else
+            LATEST_SHA=$(cat item_data/.last-pf2e-sha 2>/dev/null || echo "unknown")
+            git commit -m "chore: update PF2e item data (pf2e@${LATEST_SHA:0:7})"
+            git push
+            echo "Data updated and pushed."
+          fi

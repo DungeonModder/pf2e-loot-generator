@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PF2e Loot Generator Prototype</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Library for Multi-Select Dropdowns -->
+    <script src="https://unpkg.com/slim-select@latest/dist/slimselect.min.js"></script>
+    <link href="https://unpkg.com/slim-select@latest/dist/slimselect.css" rel="stylesheet"></link>
+
+    <!-- Library for Range Slider -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode based on class
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'title': ['"IM Fell English SC"', 'serif'],
+                        'sans': ['"Noto Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        // Colors are defined in the CSS variables below
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* --- THEME AND BRANDING STYLES --- */
+        :root {
+            --bg: #EAEFFF;
+            --ink: #192729;
+            --header: #061113;
+            --border: #D1D9E6;
+            --accent: #6EE459;
+            --accent-hover: #5ACD46;
+            --accent-text: #192729;
+            --card-bg: #F7F9FF;
+            --tag-bg: #D9F7D3;
+            --slider-bg: #D1D9E6;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        html.dark {
+            --bg: #192729;
+            --ink: #EAEFFF;
+            --header: #F7F9FF;
+            --border: #3d4a4c;
+            --accent: #6EE459;
+            --accent-hover: #85E875;
+            --accent-text: #192729;
+            --card-bg: #061113;
+            --tag-bg: #2a5223;
+            --slider-bg: #3d4a4c;
+            --danger: #ef4444;
+            --danger-hover: #f87171;
+        }
+
+        /* Applying theme variables */
+        body { background-color: var(--bg); color: var(--ink); }
+        .themed-header { color: var(--header); }
+        .themed-card { background-color: var(--card-bg); border-color: var(--border); }
+        .themed-border { border-color: var(--border); }
+        .themed-accent-bg { background-color: var(--accent); color: var(--accent-text); }
+        .themed-accent-bg:hover { background-color: var(--accent-hover); }
+        .themed-tag-bg { background-color: var(--tag-bg); }
+        .themed-accent-text { color: var(--accent); }
+        .themed-card-bg { background-color: var(--card-bg); }
+        .themed-danger-bg { background-color: var(--danger); color: white; }
+        .themed-danger-bg:hover { background-color: var(--danger-hover); }
+
+        /* --- Custom Checkbox/Radio Styling --- */
+        input[type="checkbox"], input[type="radio"] {
+            accent-color: var(--accent);
+        }
+
+        /* --- noUiSlider THEME --- */
+        .noUi-target { background: var(--slider-bg); border: none; box-shadow: none; height: 6px; }
+        .noUi-connect { background: var(--accent); }
+        .noUi-handle {
+            width: 24px !important;
+            height: 24px !important;
+            right: -12px !important;
+            top: -9px !important;
+            border: 2px solid var(--card-bg);
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: none;
+            cursor: grab;
+        }
+        .noUi-handle:active { cursor: grabbing; }
+        .noUi-handle:after, .noUi-handle:before { display: none; }
+        
+        /* --- DESCRIPTION PARAGRAPH SPACING --- */
+        .description-content p {
+            margin-bottom: 0.75rem;
+        }
+        .description-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- Inventory Modal Styling --- */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        
+        /* --- Visually Hidden Helper --- */
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        /* --- Slim Select Dark Mode Override --- */
+        html.dark .ss-main {
+            color: var(--ink);
+        }
+
+        html.dark .ss-content .ss-search input {
+            color: var(--accent-text); /* Force dark text on the white search background */
+        }
+
+        /* Style for selected items in dropdowns */
+        html.dark .ss-main .ss-values .ss-value {
+            background-color: var(--tag-bg); 
+        }
+        html:not(.dark) .ss-main .ss-values .ss-value {
+            background-color: var(--accent);
+        }
+
+        /* Dark mode text color for selected items */
+        html.dark .ss-main .ss-values .ss-value {
+            color: var(--ink);
+        }
+        html.dark .ss-main .ss-values .ss-value .ss-value-delete {
+            color: var(--ink);
+        }
+        
+        .ss-content .ss-list .ss-option:hover,
+        .ss-content .ss-list .ss-option.ss-highlighted {
+            background-color: var(--accent);
+            color: var(--accent-text);
+        }
+        .ss-content .ss-list .ss-option:not(.ss-disabled).ss-selected {
+            background-color: var(--accent); /* Selected option */
+            color: var(--accent-text);
+        }
+        
+        
+    </style>
+</head>
+<body class="font-sans p-4 sm:p-6 transition-colors duration-300">
+
+    <div class="container max-w-4xl mx-auto grid gap-8">
+        <header class="text-center relative">
+            <h1 class="font-title themed-header text-4xl sm:text-5xl">Pathfinder 2e Loot Finder</h1>
+            <h2 class="text-lg text-gray-500 dark:text-gray-400">Instantly find the perfect treasure for your party.</h2>
+            <!-- Theme Toggle -->
+            <div class="absolute top-0 right-0">
+                <button id="theme-toggle" class="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] focus:ring-[var(--accent)]">
+                    <svg id="theme-icon-light" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    <svg id="theme-icon-dark" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Inventory Button -->
+        <div class="w-full flex justify-end -mb-4">
+            <button id="inventory-btn" class="themed-accent-bg font-bold rounded-md py-2 px-4 shadow-lg flex items-center gap-3 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[var(--bg)] focus:ring-[var(--accent)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+                <span class="text-lg">Inventory</span>
+                <span id="inventory-count" class="bg-white/30 dark:bg-black/30 rounded-full px-2.5 py-0.5 text-sm font-mono">0</span>
+            </button>
+        </div>
+
+        <!-- --- HTML STRUCTURE --- -->
+        <div class="controls themed-card border rounded-lg p-6 grid gap-6 shadow-md">
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Search by Name</legend>
+                <input type="text" id="name-search" placeholder="E.g., Retribution Axe" class="w-full p-2 themed-border border rounded themed-card-bg">
+            </fieldset>
+
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2 flex justify-between items-baseline">
+                    <span>Party Level Range</span> &nbsp;
+                    <span id="level-display" class="text-xl">1 - 5</span>
+                </legend>
+                <div id="level-slider" class="mt-4"></div>
+            </fieldset>
+
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Rarity</legend>
+                <div id="rarity-filters" class="checkbox-grid grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+            </fieldset>
+
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Item Category</legend>
+                <div id="category-filters" class="flex flex-wrap gap-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="item-category" value="all" class="h-4 w-4 themed-border" checked>
+                        <span>All</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="item-category" value="permanent" class="h-4 w-4 themed-border">
+                        <span>Permanent</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="item-category" value="consumable" class="h-4 w-4 themed-border">
+                        <span>Consumable</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Rulebook</legend>
+                <select id="rulebook-select" multiple></select>
+            </fieldset>
+            
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Item Type</legend>
+                <select id="type-select" multiple></select>
+            </fieldset>
+
+            <fieldset class="filter-group">
+                <legend class="font-bold text-xl mb-2">Item Tags</legend>
+                <select id="tag-select" multiple></select>
+            </fieldset>
+
+            <div class="flex gap-4">
+                <button id="generate-btn" class="w-full themed-accent-bg font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Generate Loot</button>
+                <button id="reset-btn" class="w-full themed-card themed-border border font-bold font-title text-2xl py-3 px-4 rounded-md transition-colors duration-200">Reset Filters</button>
+            </div>
+        </div>
+
+        <!-- Sorting Controls -->
+        <div id="sort-controls" class="hidden justify-end items-center gap-2">
+            <label for="sort-by" class="font-bold">Sort by:</label>
+            <select id="sort-by" class="themed-card themed-border border rounded-md p-2">
+                <option value="level-asc">Level (Ascending)</option>
+                <option value="level-desc">Level (Descending)</option>
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="rarity">Rarity</option>
+            </select>
+        </div>
+
+        <div id="results" class="grid gap-4">
+            <p class="placeholder text-center p-8 text-gray-500 italic">Your generated loot will appear here.</p>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination-controls" class="hidden justify-center items-center gap-4 mt-4">
+            <button id="prev-page-btn" class="themed-accent-bg font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">&lt; Previous</button>
+            <span id="page-info" class="font-bold"></span>
+            <button id="next-page-btn" class="themed-accent-bg font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed">Next &gt;</button>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content themed-card border rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col transform scale-95 opacity-0">
+            <div class="flex justify-between items-center p-4 themed-border border-b">
+                <h2 class="font-title themed-header text-3xl">Your Loot Inventory</h2>
+                <button id="close-modal-btn" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">&times;</button>
+            </div>
+            <div id="inventory-list" class="p-6 overflow-y-auto flex-grow">
+                <!-- Inventory items will be rendered here -->
+            </div>
+            <div class="p-4 themed-border border-t flex flex-col sm:flex-row gap-4">
+                 <div class="flex-grow flex gap-4">
+                    <div class="relative w-full sm:w-auto">
+                         <select id="export-format-select" class="w-full h-full themed-card themed-border border font-bold py-3 px-4 rounded-md appearance-none pr-8 cursor-pointer">
+                            <option value="discord">Export for Discord</option>
+                            <option value="obsidian">Export for Obsidian</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                    <button id="copy-btn" class="w-full themed-accent-bg font-bold py-3 px-4 rounded-md transition-colors duration-200 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        Copy
+                    </button>
+                </div>
+                <button id="clear-inventory-btn" class="w-full sm:w-auto themed-danger-bg font-bold py-3 px-4 rounded-md transition-colors duration-200">Clear Inventory</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Hidden textarea for clipboard operations -->
+    <textarea id="clipboard-helper" class="visually-hidden"></textarea>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // --- THEME TOGGLE LOGIC ---
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const lightIcon = document.getElementById('theme-icon-light');
+            const darkIcon = document.getElementById('theme-icon-dark');
+
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                lightIcon.classList.add('hidden');
+                darkIcon.classList.remove('hidden');
+            }
+
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                lightIcon.classList.toggle('hidden');
+                darkIcon.classList.toggle('hidden');
+                if (document.documentElement.classList.contains('dark')) {
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    localStorage.setItem('theme', 'light');
+                }
+            });
+
+            // --- LOAD ITEM DATA FROM JSON FILE ---
+            try {
+                // UPDATED: Load the lean items file from the new directory
+                const response = await fetch('./item_data/PF2e-items.json');
+                if (!response.ok) {
+                    throw new Error(`Failed to load PF2e-items.json: ${response.statusText}`);
+                }
+                const items = await response.json();
+                initializeApp(items);
+            } catch (error) {
+                console.error("Could not initialize app:", error);
+                document.getElementById('results').innerHTML = 
+                    `<p class="placeholder text-center p-8 text-red-500">Error: Could not load item data. Please make sure PF2e-items.json is in the 'item_data' folder.</p>`;
+            }
+        });
+
+        function initializeApp(items) {
+            // --- GLOBAL STATE ---
+            let currentFilteredItems = [];
+            const rarityOrder = { 'Common': 1, 'Uncommon': 2, 'Rare': 3, 'Unique': 4 };
+            let currentPage = 1;
+            const itemsPerPage = 50;
+            let inventory = []; // Now stores objects: { item: Object, quantity: Number }
+
+            // --- GET DOM ELEMENTS ---
+            const nameSearchInput = document.getElementById('name-search');
+            const rarityContainer = document.getElementById('rarity-filters');
+            const rulebookSelectElement = document.getElementById('rulebook-select');
+            const typeSelectElement = document.getElementById('type-select');
+            const tagSelectElement = document.getElementById('tag-select');
+            const generateBtn = document.getElementById('generate-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const resultsContainer = document.getElementById('results');
+            const levelSliderElement = document.getElementById('level-slider');
+            const levelDisplay = document.getElementById('level-display');
+            const sortControls = document.getElementById('sort-controls');
+            const sortByDropdown = document.getElementById('sort-by');
+            const paginationControls = document.getElementById('pagination-controls');
+            const prevPageBtn = document.getElementById('prev-page-btn');
+            const nextPageBtn = document.getElementById('next-page-btn');
+            const pageInfo = document.getElementById('page-info');
+            
+            // Inventory Elements
+            const inventoryBtn = document.getElementById('inventory-btn');
+            const inventoryCount = document.getElementById('inventory-count');
+            const inventoryModal = document.getElementById('inventory-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const inventoryListContainer = document.getElementById('inventory-list');
+            const copyBtn = document.getElementById('copy-btn');
+            const exportFormatSelect = document.getElementById('export-format-select');
+            const clearInventoryBtn = document.getElementById('clear-inventory-btn');
+            const clipboardHelper = document.getElementById('clipboard-helper');
+            
+            let tagSelect, rulebookSelect, typeSelect;
+
+            // --- INITIALIZE LEVEL SLIDER ---
+            const levelSlider = noUiSlider.create(levelSliderElement, {
+                start: [1, 5],
+                connect: true,
+                step: 1,
+                range: { 'min': 0, 'max': 25 },
+                format: { to: value => Math.round(value), from: value => Number(value) }
+            });
+
+            levelSlider.on('update', (values) => {
+                levelDisplay.textContent = `${values[0]} - ${values[1]}`;
+            });
+
+            function populateFilters() {
+                const rarities = Object.keys(rarityOrder);
+                const allRulebooks = [...new Set(items.map(item => item.sourcebook))].filter(Boolean).sort();
+                
+                const remasterCore = ['Pathfinder Player Core', 'Pathfinder Player Core 2', 'Pathfinder GM Core', 'Pathfinder Monster Core', 'Pathfinder NPC Core'];
+                const remasterRulebooks = ['Pathfinder Battlecry!', 'Pathfinder Guns & Gears', 'Pathfinder Howl of the Wild', 'Pathfinder War of Immortals', 'Pathfinder Treasure Vault (Remastered)'];
+                const legacyCore = ['Pathfinder Core Rulebook', 'Pathfinder Advanced Player\'s Guide', 'Pathfinder Gamemastery Guide', 'Pathfinder Bestiary', 'Pathfinder Bestiary 2', 'Pathfinder Bestiary 3'];
+                const legacyRulebooks = ['Pathfinder Treasure Vault', 'Pathfinder Secrets of Magic', 'Pathfinder Rage of Elements', 'Pathfinder Dark Archive', 'Pathfinder Book of the Dead'];
+
+                const categorizedRulebooks = {
+                    "Core Books (Remaster)": [...new Set(remasterCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Remaster)": [...new Set(remasterRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Core Books (Legacy)": [...new Set(legacyCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Legacy)": [...new Set(legacyRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Lost Omens": [], "Adventure Paths": [], "Adventures": [], "Other": []
+                };
+
+                const mainBooks = new Set([...remasterCore, ...remasterRulebooks, ...legacyCore, ...legacyRulebooks]);
+
+                allRulebooks.forEach(book => {
+                    if (mainBooks.has(book)) return;
+                    if (book.includes('Lost Omens')) categorizedRulebooks["Lost Omens"].push(book);
+                    else if (book.startsWith('Pathfinder Adventure:') || book.includes('Kingmaker') || book.includes('Claws of the Tyrant')) categorizedRulebooks["Adventure Paths"].push(book);
+                    else if (/^Pathfinder #\d+:/.test(book) || book.includes('Society') || book.includes('Bounty') || book.includes('Quest')) categorizedRulebooks["Adventures"].push(book);
+                    else categorizedRulebooks["Other"].push(book);
+                });
+
+                const allItemTypes = [...new Set(items.flatMap(item => item.type))].filter(Boolean).sort();
+                const categorizedItemTypes = {
+                    "Armor by Category": ["Unarmored", "Light", "Medium", "Heavy", "Shield"],
+                    "Armor by Type": ["Chain", "Cloth", "Composite", "Leather", "Plate", "Skeletal", "Wood"],
+                    "Weapons by Category": ["Unarmed", "Simple", "Martial", "Advanced"],
+                    "Weapons by Type": ["Ammo", "Axe", "Bomb", "Bow", "Brawling", "Club", "Crossbow", "Dart", "Firearm", "Flail", "Hammer", "Knife", "Pick", "Polearm", "Sling", "Spear", "Sword"],
+                    "Worn Items": ["Clothing", "Cloak", "Footwear", "Headwear", "Armwear", "Neckwear", "Ring", "Backpack", "Mount Items"],
+                    "Runes & Modifications": ["Armor Modification", "Shield Modification", "Weapon Modification", "Item Modification", "Other Modification", "Tattoo", "Fulu", "Talisman", "Implanted"],
+                    "Consumables": ["Potion", "Elixir", "Poison", "Talisman", "Ammunition", "Oil", "Drug", "Mutagen", "Snare"],
+                    "Magical Items": ["Staff", "Wand", "Scroll", "Catalyst"],
+                };
+
+                const allTags = [...new Set(items.flatMap(item => item.tags))].filter(Boolean).sort();
+                const categorizedTags = {
+                    "Ancestries": ["Dwarf", "Elf", "Gnome", "Goblin", "Halfling", "Orc", "Human", "Android", "Automaton", "Azarketi", "Catfolk", "Changeling", "Dhampir", "Duskwalker", "Fleshwarp", "Ganzi", "Geniekin", "Gnoll", "Grippli", "Hobgoblin", "Kitsune", "Kobold", "Leshy", "Lizardfolk", "Nagaji", "Orc", "Poppet", "Ratfolk", "Shisk", "Shoony", "Skeleton", "Sprite", "Strix", "Tengu", "Vanara", "Vishkanya"],
+                    "Elements": ["Air", "Cold", "Earth", "Fire", "Water", "Electricity", "Acid", "Sonic", "Force", "Positive", "Negative", "Light", "Darkness", "Shadow"],
+                    "Weapon Properties": ["Agile", "Backstabber", "Backswing", "Brace", "Climbing", "Cobbled", "Combination", "Concussive", "Deadly", "Disarm", "Fatal", "Finesse", "Forceful", "Free-Hand", "Grapple", "Hampering", "Jousting", "Kickback", "Modular", "Mounted", "Nonlethal", "Parry", "Propulsive", "Range", "Reach", "Scatter", "Shove", "Sweep", "Tethered", "Thrown", "Trip", "Twin", "Two-Hand", "Unarmed", "Versatile", "Volley"],
+                    "Item Properties": ["Alchemical", "Artifact", "Auditory", "Clockwork", "Companion", "Contract", "Cursed", "Drug", "Elixir", "Extradimensional", "Fulu", "Gadget", "Grimoire", "Implanted", "Intelligent", "Invested", "Light", "Lit", "Magical", "Mutagen", "Oil", "Poison", "Potion", "Precious", "Relic", "Snare", "Spellheart", "Staff", "Structure", "Talisman", "Tattoo", "Teleportation", "Trap", "Wand"],
+                    "Schools of Magic": ["Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"],
+                    "Damage Types": ["Slashing", "Piercing", "Bludgeoning"],
+                    "Other": []
+                };
+
+                const categorizedTypesSet = new Set(Object.values(categorizedItemTypes).flat());
+                categorizedItemTypes["Other"] = allItemTypes.filter(type => !categorizedTypesSet.has(type));
+                
+                const categorizedTagsSet = new Set(Object.values(categorizedTags).flat());
+                categorizedTags["Other"] = allTags.filter(tag => !categorizedTagsSet.has(tag.charAt(0).toUpperCase() + tag.slice(1)));
+
+
+                rarityContainer.innerHTML = rarities.map(rarity => `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="rarity" value="${rarity}" class="h-4 w-4 rounded themed-border" checked><span>${rarity}</span></label>`).join('');
+                
+                let rulebookHTML = '';
+                for (const category in categorizedRulebooks) {
+                    if (categorizedRulebooks[category].length > 0) {
+                        rulebookHTML += `<optgroup label="${category}">${categorizedRulebooks[category].map(book => `<option value="${book}">${book}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                rulebookSelectElement.innerHTML = rulebookHTML;
+                
+                let typeHTML = '';
+                for (const category in categorizedItemTypes) {
+                    const typesInCategory = categorizedItemTypes[category].filter(type => allItemTypes.includes(type));
+                    if (typesInCategory.length > 0) {
+                        typeHTML += `<optgroup label="${category}">${typesInCategory.map(type => `<option value="${type}">${type}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                typeSelectElement.innerHTML = typeHTML;
+                
+                let tagHTML = '';
+                for (const category in categorizedTags) {
+                    const tagsInCategory = categorizedTags[category].filter(tag => allTags.includes(tag.toLowerCase()));
+                    if (tagsInCategory.length > 0) {
+                        tagHTML += `<optgroup label="${category}">${tagsInCategory.map(tag => `<option value="${tag.toLowerCase()}">${tag}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                tagSelectElement.innerHTML = tagHTML;
+
+                rulebookSelect = new SlimSelect({ select: '#rulebook-select', settings: { placeholderText: 'Select rulebooks...' } });
+                typeSelect = new SlimSelect({ select: '#type-select', settings: { placeholderText: 'Select item types...' } });
+                tagSelect = new SlimSelect({ select: '#tag-select', settings: { placeholderText: 'Select tags...' } });
+            }
+
+            function resetFilters() {
+                nameSearchInput.value = '';
+                levelSlider.set([1, 5]);
+                document.querySelectorAll('input[name="rarity"]').forEach(cb => cb.checked = true);
+                document.querySelector('input[name="item-category"][value="all"]').checked = true;
+                rulebookSelect.setSelected([]);
+                typeSelect.setSelected([]);
+                tagSelect.setSelected([]);
+                generateLoot();
+            }
+
+            function generateLoot() {
+                currentPage = 1; // Reset to first page on new search
+                const [minLevel, maxLevel] = levelSlider.get();
+                const searchTerm = nameSearchInput.value.toLowerCase();
+                const selectedRarities = [...document.querySelectorAll('input[name="rarity"]:checked')].map(el => el.value);
+                const selectedCategory = document.querySelector('input[name="item-category"]:checked').value;
+                const selectedRulebooks = rulebookSelect.getSelected();
+                const selectedTypes = typeSelect.getSelected();
+                const selectedTags = tagSelect.getSelected();
+                
+                currentFilteredItems = items.filter(item => {
+                    const nameMatch = item.name.toLowerCase().includes(searchTerm);
+                    const levelMatch = item.level >= minLevel && item.level <= maxLevel;
+                    const rarityMatch = selectedRarities.length === 0 || selectedRarities.includes(item.rarity);
+                    const rulebookMatch = selectedRulebooks.length === 0 || selectedRulebooks.includes(item.sourcebook);
+                    const typeMatch = selectedTypes.length === 0 || selectedTypes.some(st => item.type.includes(st));
+                    const tagMatch = selectedTags.length === 0 || selectedTags.every(tag => item.tags.includes(tag));
+                    
+                    const categoryMatch = selectedCategory === 'all' ||
+                                          (selectedCategory === 'permanent' && !item.tags.includes('consumable')) ||
+                                          (selectedCategory === 'consumable' && item.tags.includes('consumable'));
+
+                    return nameMatch && levelMatch && rarityMatch && rulebookMatch && typeMatch && tagMatch && categoryMatch;
+                });
+                
+                sortAndRenderResults();
+            }
+
+            function sortAndRenderResults() {
+                const sortBy = sortByDropdown.value;
+                let sortedItems = [...currentFilteredItems];
+
+                switch (sortBy) {
+                    case 'level-asc': sortedItems.sort((a, b) => a.level - b.level); break;
+                    case 'level-desc': sortedItems.sort((a, b) => b.level - a.level); break;
+                    case 'name-asc': sortedItems.sort((a, b) => a.name.localeCompare(b.name)); break;
+                    case 'rarity': sortedItems.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0)); break;
+                }
+                
+                renderResults(sortedItems);
+            }
+
+            function renderResults(filteredItems) {
+                resultsContainer.innerHTML = ''; 
+
+                if (filteredItems.length === 0) {
+                    resultsContainer.innerHTML = `<p class="placeholder text-center p-8 text-gray-500 italic">No items found matching your criteria. Try expanding your search!</p>`;
+                    sortControls.classList.add('hidden');
+                    paginationControls.classList.add('hidden');
+                    return;
+                }
+
+                sortControls.classList.remove('hidden');
+                sortControls.classList.add('flex');
+
+                const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+                
+                if (totalPages > 1) {
+                    paginationControls.classList.remove('hidden');
+                    paginationControls.classList.add('flex');
+                    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+                    prevPageBtn.disabled = currentPage === 1;
+                    nextPageBtn.disabled = currentPage === totalPages;
+                } else {
+                    paginationControls.classList.add('hidden');
+                }
+
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                const itemsToDisplay = filteredItems.slice(startIndex, endIndex);
+
+                itemsToDisplay.forEach(item => {
+                    const tagsHTML = (item.tags || []).map(tag => `<span class="themed-tag-bg inline-block px-2 py-1 rounded-full text-xs mr-1 mb-1">${tag}</span>`).join(' ');
+                    const isInInventory = inventory.some(invEntry => invEntry.item.name === item.name);
+
+                    const card = document.createElement('div');
+                    card.className = 'item-card themed-card border rounded-lg p-4 shadow-sm flex flex-col';
+                    card.dataset.itemName = item.name;
+                    card.innerHTML = `
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-baseline mb-1">
+                                <h3 class="font-title themed-header text-2xl">${item.name}</h3>
+                                <span class="text-base font-bold themed-header ml-4 text-right flex-shrink-0">Level ${item.level} | ${item.rarity}</span>
+                            </div>
+                            <div class="meta flex justify-between items-baseline text-sm italic text-gray-500 dark:text-gray-400 mb-3">
+                                <span>${item.sourcebook}</span>
+                                <span class="font-bold ml-4">${item.price ? `Price: ${item.price}` : ''}</span>
+                            </div>
+                            <div class="tags mb-3">${tagsHTML}</div>
+                            <div class="description hidden mt-3 pt-3 themed-border border-t">
+                                <div class="description-content leading-relaxed">
+                                    <p class="italic text-gray-500">Loading details...</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto pt-3 flex justify-between items-center themed-border border-t">
+                             <button class="toggle-details-btn themed-accent-text font-bold hover:underline">Show Details</button>
+                             <button class="add-to-inventory-btn themed-accent-bg font-bold py-2 px-4 rounded-md transition-colors duration-200" ${isInInventory ? 'disabled' : ''}>
+                                ${isInInventory ? 'Added' : 'Add to Inventory'}
+                            </button>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                });
+            }
+
+            // --- INVENTORY LOGIC ---
+            function updateInventoryCount() {
+                inventoryCount.textContent = inventory.length;
+            }
+
+            function addToInventory(itemName) {
+                const itemToAdd = items.find(item => item.name === itemName);
+                if (itemToAdd && !inventory.some(invEntry => invEntry.item.name === itemName)) {
+                    inventory.push({ item: itemToAdd, quantity: 1 });
+                    updateInventoryCount();
+                    const cardButton = document.querySelector(`.item-card[data-item-name="${itemName}"] .add-to-inventory-btn`);
+                    if (cardButton) {
+                        cardButton.textContent = 'Added';
+                        cardButton.disabled = true;
+                    }
+                }
+            }
+            
+            function removeFromInventory(itemName) {
+                inventory = inventory.filter(invEntry => invEntry.item.name !== itemName);
+                updateInventoryCount();
+                renderInventoryModal();
+                const cardButton = document.querySelector(`.item-card[data-item-name="${itemName}"] .add-to-inventory-btn`);
+                if (cardButton) {
+                    cardButton.textContent = 'Add to Inventory';
+                    cardButton.disabled = false;
+                }
+            }
+
+            function changeQuantity(itemName, amount) {
+                const inventoryEntry = inventory.find(invEntry => invEntry.item.name === itemName);
+                if (inventoryEntry) {
+                    inventoryEntry.quantity += amount;
+                    if (inventoryEntry.quantity <= 0) {
+                        removeFromInventory(itemName);
+                    } else {
+                        renderInventoryModal();
+                    }
+                }
+            }
+
+            function clearInventory() {
+                inventory = [];
+                updateInventoryCount();
+                renderInventoryModal();
+                document.querySelectorAll('.add-to-inventory-btn').forEach(btn => {
+                    btn.textContent = 'Add to Inventory';
+                    btn.disabled = false;
+                });
+            }
+
+            function renderInventoryModal() {
+                inventoryListContainer.innerHTML = '';
+                if (inventory.length === 0) {
+                    inventoryListContainer.innerHTML = '<p class="text-gray-500 italic">Your inventory is empty. Add items from the main list!</p>';
+                    return;
+                }
+
+                const permanentItems = inventory.filter(invEntry => !invEntry.item.tags.includes('consumable')).sort((a, b) => a.item.name.localeCompare(b.item.name));
+                const consumableItems = inventory.filter(invEntry => invEntry.item.tags.includes('consumable')).sort((a, b) => a.item.name.localeCompare(b.item.name));
+
+                const createItemEntry = (invEntry) => {
+                    const { item, quantity } = invEntry;
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'flex justify-between items-center py-2 themed-border border-b';
+                    itemEl.innerHTML = `
+                        <div class="flex-1">
+                            <p class="font-bold">${item.name} (Lvl ${item.level})</p>
+                            <p class="text-sm text-gray-500">${item.sourcebook}</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="quantity-change-btn themed-accent-bg font-bold w-6 h-6 rounded-full flex items-center justify-center" data-item-name="${item.name}" data-amount="-1">-</button>
+                            <span class="font-mono font-bold w-8 text-center">${quantity}</span>
+                            <button class="quantity-change-btn themed-accent-bg font-bold w-6 h-6 rounded-full flex items-center justify-center" data-item-name="${item.name}" data-amount="1">+</button>
+                            <button class="remove-from-inventory-btn themed-danger-bg text-white font-bold text-xs py-1 px-2 rounded ml-2" data-item-name="${item.name}">Remove</button>
+                        </div>
+                    `;
+                    return itemEl;
+                };
+
+                if (permanentItems.length > 0) {
+                    const header = document.createElement('h4');
+                    header.className = 'font-bold text-lg themed-header mt-4 mb-2 first:mt-0';
+                    header.textContent = 'Permanent Items';
+                    inventoryListContainer.appendChild(header);
+                    permanentItems.forEach(invEntry => inventoryListContainer.appendChild(createItemEntry(invEntry)));
+                }
+
+                if (consumableItems.length > 0) {
+                    const header = document.createElement('h4');
+                    header.className = 'font-bold text-lg themed-header mt-4 mb-2 first:mt-0';
+                    header.textContent = 'Consumable Items';
+                    inventoryListContainer.appendChild(header);
+                    consumableItems.forEach(invEntry => inventoryListContainer.appendChild(createItemEntry(invEntry)));
+                }
+            }
+            
+            function openModal() {
+                renderInventoryModal();
+                inventoryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    inventoryModal.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+                    inventoryModal.classList.remove('opacity-0');
+                }, 10);
+            }
+
+            function closeModal() {
+                inventoryModal.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
+                inventoryModal.classList.add('opacity-0');
+                setTimeout(() => {
+                    inventoryModal.classList.add('hidden');
+                }, 300);
+            }
+
+            function copyFormattedTextToClipboard() {
+                if (inventory.length === 0) return;
+                
+                const format = exportFormatSelect.value;
+                const permanentItems = inventory.filter(invEntry => !invEntry.item.tags.includes('consumable')).sort((a, b) => a.item.name.localeCompare(b.item.name));
+                const consumableItems = inventory.filter(invEntry => invEntry.item.tags.includes('consumable')).sort((a, b) => a.item.name.localeCompare(b.item.name));
+                
+                let markdownParts = [];
+
+                const formatItem = (invEntry) => {
+                    const { item, quantity } = invEntry;
+                    const quantityText = quantity > 1 ? ` x ${quantity}` : '';
+                    let nameText;
+
+                    if (format === 'obsidian') {
+                        nameText = `[[${item.name}]]`;
+                    } else { // Default to Discord
+                        nameText = `[${item.name}](<${item.aon_link}>)`;
+                    }
+                    
+                    return `- ${nameText}${quantityText} (Lvl ${item.level})`;
+                };
+
+                if (permanentItems.length > 0) {
+                    markdownParts.push('**Permanent Items**');
+                    markdownParts.push(...permanentItems.map(formatItem));
+                }
+
+                if (consumableItems.length > 0) {
+                    if (markdownParts.length > 0) {
+                        markdownParts.push(''); 
+                    }
+                    markdownParts.push('**Consumable Items**');
+                    markdownParts.push(...consumableItems.map(formatItem));
+                }
+                
+                const markdownText = markdownParts.join('\n');
+
+                clipboardHelper.value = markdownText;
+                clipboardHelper.select();
+                document.execCommand('copy');
+                
+                const originalText = copyBtn.innerHTML;
+                copyBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    Copied!
+                `;
+                setTimeout(() => {
+                    copyBtn.innerHTML = originalText;
+                }, 2000);
+            }
+
+            // --- NEW: LAZY LOAD DESCRIPTION LOGIC ---
+            function sanitizeForItemFile(name) {
+                return name.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/[\s-]+/g, '-');
+            }
+
+            async function loadDescription(card) {
+                const itemName = card.dataset.itemName;
+                const descriptionDiv = card.querySelector('.description');
+                const contentDiv = descriptionDiv.querySelector('.description-content');
+                
+                if (card.dataset.detailsLoaded === 'true') {
+                    return; // Already loaded
+                }
+
+                try {
+                    const item = items.find(i => i.name === itemName);
+                    if (!item) throw new Error('Item data not found');
+
+                    const fileName = sanitizeForItemFile(itemName);
+                    const response = await fetch(`./item_data/descriptions/${fileName}.json`);
+                    if (!response.ok) throw new Error('Description file not found');
+                    
+                    const data = await response.json();
+                    contentDiv.innerHTML = data.description;
+
+                    // Append the AoN link
+                    const aonLink = document.createElement('a');
+                    aonLink.href = item.aon_link;
+                    aonLink.target = '_blank';
+                    aonLink.className = 'themed-accent-text font-bold hover:underline block mt-4';
+                    aonLink.innerHTML = 'View on Archives of Nethys ↗';
+                    contentDiv.appendChild(aonLink);
+
+                    card.dataset.detailsLoaded = 'true';
+                } catch (error) {
+                    contentDiv.innerHTML = '<p class="text-red-500">Could not load description.</p>';
+                    console.error(`Failed to load description for ${itemName}:`, error);
+                }
+            }
+
+            // --- EVENT LISTENERS ---
+            resultsContainer.addEventListener('click', (e) => {
+                const target = e.target;
+                const card = target.closest('.item-card');
+                if (!card) return;
+
+                if (target.classList.contains('add-to-inventory-btn')) {
+                    addToInventory(card.dataset.itemName);
+                } else if (target.classList.contains('toggle-details-btn')) {
+                    const descriptionDiv = card.querySelector('.description');
+                    const isHidden = descriptionDiv.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        loadDescription(card); // Load if not already loaded
+                        descriptionDiv.classList.remove('hidden');
+                        target.textContent = 'Hide Details';
+                    } else {
+                        descriptionDiv.classList.add('hidden');
+                        target.textContent = 'Show Details';
+                    }
+                }
+            });
+
+            inventoryListContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('button');
+                if (!target) return;
+
+                if (target.classList.contains('remove-from-inventory-btn')) {
+                    removeFromInventory(target.dataset.itemName);
+                } else if (target.classList.contains('quantity-change-btn')) {
+                    const itemName = target.dataset.itemName;
+                    const amount = parseInt(target.dataset.amount, 10);
+                    changeQuantity(itemName, amount);
+                }
+            });
+            
+            inventoryBtn.addEventListener('click', openModal);
+            closeModalBtn.addEventListener('click', closeModal);
+            inventoryModal.addEventListener('click', (e) => {
+                if (e.target === inventoryModal) closeModal();
+            });
+            copyBtn.addEventListener('click', copyFormattedTextToClipboard);
+            clearInventoryBtn.addEventListener('click', clearInventory);
+
+
+            // --- INITIALIZE THE APPLICATION ---
+            populateFilters();
+            generateBtn.addEventListener('click', generateLoot);
+            resetBtn.addEventListener('click', resetFilters);
+            sortByDropdown.addEventListener('change', sortAndRenderResults);
+
+            prevPageBtn.addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage--;
+                    sortAndRenderResults();
+                    resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+
+            nextPageBtn.addEventListener('click', () => {
+                const totalPages = Math.ceil(currentFilteredItems.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    sortAndRenderResults();
+                    resultsContainer.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        }
+    </script>
+</body>
+</html>

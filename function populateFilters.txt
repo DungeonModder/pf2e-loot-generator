@@ -1,0 +1,89 @@
+function populateFilters() {
+                const rarities = Object.keys(rarityOrder);
+                const allRulebooks = [...new Set(items.map(item => item.sourcebook))].filter(Boolean).sort();
+                
+                const remasterCore = ['Pathfinder Player Core', 'Pathfinder Player Core 2', 'Pathfinder GM Core', 'Pathfinder Monster Core', 'Pathfinder NPC Core'];
+                const remasterRulebooks = ['Pathfinder Battlecry!', 'Pathfinder Guns & Gears', 'Pathfinder Howl of the Wild', 'Pathfinder War of Immortals', 'Pathfinder Treasure Vault (Remastered)'];
+                const legacyCore = ['Pathfinder Core Rulebook', 'Pathfinder Advanced Player\'s Guide', 'Pathfinder Gamemastery Guide', 'Pathfinder Bestiary', 'Pathfinder Bestiary 2', 'Pathfinder Bestiary 3'];
+                const legacyRulebooks = ['Pathfinder Treasure Vault', 'Pathfinder Secrets of Magic', 'Pathfinder Rage of Elements', 'Pathfinder Dark Archive', 'Pathfinder Book of the Dead'];
+
+                const categorizedRulebooks = {
+                    "Core Books (Remaster)": [...new Set(remasterCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Remaster)": [...new Set(remasterRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Core Books (Legacy)": [...new Set(legacyCore)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Rulebooks (Legacy)": [...new Set(legacyRulebooks)].filter(b => allRulebooks.includes(b)).sort(),
+                    "Lost Omens": [], "Adventure Paths": [], "Adventures": [], "Other": []
+                };
+
+                const mainBooks = new Set([...remasterCore, ...remasterRulebooks, ...legacyCore, ...legacyRulebooks]);
+
+                allRulebooks.forEach(book => {
+                    if (mainBooks.has(book)) return;
+                    if (book.includes('Lost Omens')) categorizedRulebooks["Lost Omens"].push(book);
+                    else if (book.startsWith('Pathfinder Adventure:') || book.includes('Kingmaker') || book.includes('Claws of the Tyrant')) categorizedRulebooks["Adventure Paths"].push(book);
+                    else if (/^Pathfinder #\d+:/.test(book) || book.includes('Society') || book.includes('Bounty') || book.includes('Quest')) categorizedRulebooks["Adventures"].push(book);
+                    else categorizedRulebooks["Other"].push(book);
+                });
+
+                const allItemTypes = [...new Set(items.flatMap(item => item.type))].filter(Boolean).sort();
+                const categorizedItemTypes = {
+                    "Armor by Category": ["Unarmored", "Light", "Medium", "Heavy", "Shield"],
+                    "Armor by Type": ["Chain", "Cloth", "Composite", "Leather", "Plate", "Skeletal", "Wood"],
+                    "Weapons by Category": ["Unarmed", "Simple", "Martial", "Advanced"],
+                    "Weapons by Type": ["Ammo", "Axe", "Bomb", "Bow", "Brawling", "Club", "Crossbow", "Dart", "Firearm", "Flail", "Hammer", "Knife", "Pick", "Polearm", "Sling", "Spear", "Sword"],
+                    "Worn Items": ["Clothing", "Cloak", "Footwear", "Headwear", "Armwear", "Neckwear", "Ring", "Backpack", "Mount Items"],
+                    "Runes & Modifications": ["Armor Modification", "Shield Modification", "Weapon Modification", "Item Modification", "Other Modification", "Tattoo", "Fulu", "Talisman", "Implanted"],
+                    "Consumables": ["Potion", "Elixir", "Poison", "Talisman", "Ammunition", "Oil", "Drug", "Mutagen", "Snare"],
+                    "Magical Items": ["Staff", "Wand", "Scroll", "Catalyst"],
+                };
+
+                const allTags = [...new Set(items.flatMap(item => item.tags))].filter(Boolean).sort();
+                const categorizedTags = {
+                    "Ancestries": ["Dwarf", "Elf", "Gnome", "Goblin", "Halfling", "Orc", "Human", "Android", "Automaton", "Azarketi", "Catfolk", "Changeling", "Dhampir", "Duskwalker", "Fleshwarp", "Ganzi", "Geniekin", "Gnoll", "Grippli", "Hobgoblin", "Kitsune", "Kobold", "Leshy", "Lizardfolk", "Nagaji", "Orc", "Poppet", "Ratfolk", "Shisk", "Shoony", "Skeleton", "Sprite", "Strix", "Tengu", "Vanara", "Vishkanya"],
+                    "Elements": ["Air", "Cold", "Earth", "Fire", "Water", "Electricity", "Acid", "Sonic", "Force", "Positive", "Negative", "Light", "Darkness", "Shadow"],
+                    "Weapon Properties": ["Agile", "Backstabber", "Backswing", "Brace", "Climbing", "Cobbled", "Combination", "Concussive", "Deadly", "Disarm", "Fatal", "Finesse", "Forceful", "Free-Hand", "Grapple", "Hampering", "Jousting", "Kickback", "Modular", "Mounted", "Nonlethal", "Parry", "Propulsive", "Range", "Reach", "Scatter", "Shove", "Sweep", "Tethered", "Thrown", "Trip", "Twin", "Two-Hand", "Unarmed", "Versatile", "Volley"],
+                    "Item Properties": ["Alchemical", "Artifact", "Auditory", "Clockwork", "Companion", "Contract", "Cursed", "Drug", "Elixir", "Extradimensional", "Fulu", "Gadget", "Grimoire", "Implanted", "Intelligent", "Invested", "Light", "Lit", "Magical", "Mutagen", "Oil", "Poison", "Potion", "Precious", "Relic", "Snare", "Spellheart", "Staff", "Structure", "Talisman", "Tattoo", "Teleportation", "Trap", "Wand"],
+                    "Schools of Magic": ["Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation"],
+                    "Damage Types": ["Slashing", "Piercing", "Bludgeoning"],
+                    "Other": []
+                };
+
+                const categorizedTypesSet = new Set(Object.values(categorizedItemTypes).flat());
+                categorizedItemTypes["Other"] = allItemTypes.filter(type => !categorizedTypesSet.has(type));
+                
+                const categorizedTagsSet = new Set(Object.values(categorizedTags).flat());
+                categorizedTags["Other"] = allTags.filter(tag => !categorizedTagsSet.has(tag.charAt(0).toUpperCase() + tag.slice(1)));
+
+
+                rarityContainer.innerHTML = rarities.map(rarity => `<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="rarity" value="${rarity}" class="h-4 w-4 rounded themed-border" checked><span>${rarity}</span></label>`).join('');
+                
+                let rulebookHTML = '';
+                for (const category in categorizedRulebooks) {
+                    if (categorizedRulebooks[category].length > 0) {
+                        rulebookHTML += `<optgroup label="${category}">${categorizedRulebooks[category].map(book => `<option value="${book}">${book}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                rulebookSelectElement.innerHTML = rulebookHTML;
+                
+                let typeHTML = '';
+                for (const category in categorizedItemTypes) {
+                    const typesInCategory = categorizedItemTypes[category].filter(type => allItemTypes.includes(type));
+                    if (typesInCategory.length > 0) {
+                        typeHTML += `<optgroup label="${category}">${typesInCategory.map(type => `<option value="${type}">${type}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                typeSelectElement.innerHTML = typeHTML;
+                
+                let tagHTML = '';
+                for (const category in categorizedTags) {
+                    const tagsInCategory = categorizedTags[category].filter(tag => allTags.includes(tag.toLowerCase()));
+                    if (tagsInCategory.length > 0) {
+                        tagHTML += `<optgroup label="${category}">${tagsInCategory.map(tag => `<option value="${tag.toLowerCase()}">${tag}</option>`).join('')}</optgroup>`;
+                    }
+                }
+                tagSelectElement.innerHTML = tagHTML;
+
+                rulebookSelect = new SlimSelect({ select: '#rulebook-select', settings: { placeholderText: 'Select rulebooks...' } });
+                typeSelect = new SlimSelect({ select: '#type-select', settings: { placeholderText: 'Select item types...' } });
+                tagSelect = new SlimSelect({ select: '#tag-select', settings: { placeholderText: 'Select tags...' } });
+            }
