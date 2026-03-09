@@ -202,23 +202,53 @@ function parseFoundryItem(data) {
 // ─── GITHUB FETCH ─────────────────────────────────────────────────────────────
 
 async function getEquipmentFilePaths() {
-    const url = `https://api.github.com/repos/${REPO}/git/trees/${BRANCH}?recursive=1`;
-    console.log(`Fetching file list from GitHub...\n  ${url}`);
+    // Fetching the full repo tree with ?recursive=1 is unreliable for large repos
+    // like pf2e because GitHub truncates the response when the tree is too large.
+    // Instead, navigate the tree to the specific pack subtree SHA, then fetch
+    // only that subtree recursively — it's small enough to never be truncated.
 
-    const raw  = await fetchUrl(url, true);
-    const data = JSON.parse(raw.toString('utf8'));
+    // Step 1: Get the root tree SHA from the latest branch commit.
+    console.log('Fetching branch commit to resolve root tree SHA...');
+    const commitUrl  = `https://api.github.com/repos/${REPO}/commits/${BRANCH}`;
+    const commitData = JSON.parse((await fetchUrl(commitUrl, true)).toString('utf8'));
+    const rootTreeSha = commitData.commit.tree.sha;
 
-    if (data.truncated) {
-        console.warn('[WARN] GitHub tree response was truncated — some files may be missing.');
+    const allPaths = [];
+
+    for (const packPath of PACK_PATHS) {
+        // Step 2: Walk from the root tree down through each path segment to find
+        //         the tree SHA for this pack directory.
+        const parts = packPath.split('/');
+        let currentSha = rootTreeSha;
+
+        for (const part of parts) {
+            const treeUrl  = `https://api.github.com/repos/${REPO}/git/trees/${currentSha}`;
+            const treeData = JSON.parse((await fetchUrl(treeUrl, true)).toString('utf8'));
+            const entry    = (treeData.tree || []).find(e => e.path === part && e.type === 'tree');
+            if (!entry) throw new Error(`Could not find '${part}' in tree (sha: ${currentSha})`);
+            currentSha = entry.sha;
+        }
+
+        // Step 3: Fetch just the equipment subtree recursively.
+        //         This is tiny compared to the full repo tree and will not be truncated.
+        console.log(`Fetching file list for '${packPath}'...`);
+        const packTreeUrl  = `https://api.github.com/repos/${REPO}/git/trees/${currentSha}?recursive=1`;
+        const packTreeData = JSON.parse((await fetchUrl(packTreeUrl, true)).toString('utf8'));
+
+        if (packTreeData.truncated) {
+            // This would be unexpected for an equipment-only subtree.
+            console.warn(`[WARN] Tree for '${packPath}' is still truncated — some files may be missing.`);
+        }
+
+        const paths = (packTreeData.tree || [])
+            .filter(item => item.type === 'blob' && item.path.endsWith('.json'))
+            .map(item => `${packPath}/${item.path}`);
+
+        console.log(`  Found ${paths.length} files in '${packPath}'.`);
+        allPaths.push(...paths);
     }
 
-    return (data.tree || [])
-        .filter(item =>
-            item.type === 'blob' &&
-            item.path.endsWith('.json') &&
-            PACK_PATHS.some(pack => item.path.startsWith(pack + '/'))
-        )
-        .map(item => item.path);
+    return allPaths;
 }
 
 async function fetchAndParse(filePath) {
@@ -287,7 +317,7 @@ async function run() {
     console.log();
 
     const paths = await getEquipmentFilePaths();
-    console.log(`Found ${paths.length} item files across [${PACK_PATHS.join(', ')}].\n`);
+    console.log(`\nTotal: ${paths.length} item files to process.\n`);
 
     const descriptionsPath = path.join(OUTPUT_FOLDER, 'descriptions');
     fs.mkdirSync(descriptionsPath, { recursive: true });
