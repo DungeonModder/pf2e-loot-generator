@@ -136,10 +136,30 @@ function getUsageCategories(rawUsage) {
 
 function cleanFoundryHtml(html) {
     if (!html) return '';
-    // @Something[ref]{Label} → Label
-    html = html.replace(/@\w+\[[^\]]*\]\{([^}]+)\}/g, '$1');
-    // @Something[ref] with no label → remove
-    html = html.replace(/@\w+\[[^\]]*\]/g, '');
+
+    // --- Foundry inline rolls: [[/command formula]]{label} and [[/command formula]] ---
+    // e.g. [[/r 1d20+16]]{+16} → "+16"
+    html = html.replace(/\[\[\/[^\]]*\]\]\{([^}]+)\}/g, '$1');
+    // e.g. [[/r 1d20+16]] (no label) → show the formula part after the command
+    html = html.replace(/\[\[\/\w+\s+([^\]]+)\]\]/g, '$1');
+    // Catch-all for any remaining [[...]] constructs
+    html = html.replace(/\[\[[^\]]*\]\]/g, '');
+
+    // --- @Something[ref]{Label} → Label ---
+    // Nested brackets handled so @Damage[1d4[persistent,fire]]{fire} → "fire"
+    html = html.replace(/@\w+\[(?:[^\[\]]*|\[[^\]]*\])*\]\{([^}]+)\}/g, '$1');
+
+    // --- @UUID[Compendium...Type.Item Name] without a label → extract the item name ---
+    // e.g. @UUID[Compendium.pf2e.equipment-srd.Item.Staff of Fire (Greater)] → "Staff of Fire (Greater)"
+    // Greedy backtracking on [^\]]+\. reliably lands on the document-type segment.
+    html = html.replace(
+        /@UUID\[(?:[^\]]+\.)(?:Item|Spell|Actor|JournalEntry(?:Page)?|RollTable|Macro|Scene)\.([^\]]+)\](?!\{)/g,
+        '$1'
+    );
+
+    // --- @Something[ref] with no label → remove entirely ---
+    html = html.replace(/@\w+\[(?:[^\[\]]*|\[[^\]]*\])*\]/g, '');
+
     return html;
 }
 
