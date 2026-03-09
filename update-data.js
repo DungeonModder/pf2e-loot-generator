@@ -21,8 +21,8 @@ const path  = require('path');
 // Token priority: hardcoded value → GITHUB_TOKEN_OVERRIDE env var (used by CI)
 const GITHUB_TOKEN   = '' || process.env.GITHUB_TOKEN_OVERRIDE || '';  // Optional but recommended
 const REPO           = 'foundryvtt/pf2e';
-const BRANCH         = 'master';
-const PACK_PATHS     = ['packs/equipment'];  // Add e.g. 'packs/treasure' if needed
+let   BRANCH         = '';  // Leave empty to auto-detect the repo's default branch, or hardcode e.g. 'v13-dev'
+const PACK_PATHS     = ['packs/pf2e/equipment'];  // Add e.g. 'packs/pf2e/treasure' if needed
 const OUTPUT_FOLDER  = 'item_data';
 const MAX_CONCURRENT = 10;                   // Parallel downloads
 // ──────────────────────────────────────────────────────────────────────────────
@@ -296,6 +296,13 @@ async function run() {
     if (!GITHUB_TOKEN) {
         console.log('Tip: Set GITHUB_TOKEN at the top of this script for higher API rate limits.');
         console.log('     See: https://github.com/settings/tokens (no scopes required)\n');
+    }
+
+    // Resolve branch name if not hardcoded
+    if (!BRANCH) {
+        const repoInfo = JSON.parse((await fetchUrl(`https://api.github.com/repos/${REPO}`, true)).toString('utf8'));
+        BRANCH = repoInfo.default_branch;
+        console.log(`Using default branch: ${BRANCH}`);
     }
 
     // Check whether pf2e has changed since the last run
