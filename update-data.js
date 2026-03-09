@@ -62,6 +62,11 @@ const SKIP_FOUNDRY_TYPES = new Set([
 
 // ─── NETWORK ──────────────────────────────────────────────────────────────────
 
+// Keep-alive agents reuse TCP+TLS connections across requests to the same host,
+// eliminating per-request handshake overhead for the thousands of raw file downloads.
+const rawAgent = new https.Agent({ keepAlive: true, maxSockets: MAX_CONCURRENT });
+const apiAgent = new https.Agent({ keepAlive: true, maxSockets: 5 });
+
 function buildHeaders(acceptJson = false) {
     const h = { 'User-Agent': 'PF2e-LootGenerator-Updater/2.0' };
     if (GITHUB_TOKEN) h['Authorization'] = `Bearer ${GITHUB_TOKEN}`;
@@ -69,13 +74,23 @@ function buildHeaders(acceptJson = false) {
     return h;
 }
 
-function fetchUrl(url, acceptJson = false) {
+function fetchUrl(url, acceptJson = false, retries = 3) {
     return new Promise((resolve, reject) => {
-        const options = { headers: buildHeaders(acceptJson) };
+        const isApi = url.includes('api.github.com');
+        const options = {
+            headers: buildHeaders(acceptJson),
+            agent: isApi ? apiAgent : rawAgent,
+        };
         const req = https.get(url, options, (res) => {
             // Follow redirects
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                return fetchUrl(res.headers.location, acceptJson).then(resolve).catch(reject);
+                return fetchUrl(res.headers.location, acceptJson, retries).then(resolve).catch(reject);
+            }
+            // Retry on rate-limit or server errors with exponential backoff
+            if ((res.statusCode === 429 || res.statusCode >= 500) && retries > 0) {
+                res.resume();
+                const delay = (4 - retries) * 2000; // 2s, 4s, 6s
+                return setTimeout(() => fetchUrl(url, acceptJson, retries - 1).then(resolve).catch(reject), delay);
             }
             if (res.statusCode !== 200) {
                 res.resume();
@@ -86,7 +101,13 @@ function fetchUrl(url, acceptJson = false) {
             res.on('end',  ()  => resolve(Buffer.concat(chunks)));
             res.on('error', reject);
         });
-        req.on('error', reject);
+        req.on('error', (err) => {
+            if (retries > 0) {
+                const delay = (4 - retries) * 2000;
+                return setTimeout(() => fetchUrl(url, acceptJson, retries - 1).then(resolve).catch(reject), delay);
+            }
+            reject(err);
+        });
         req.setTimeout(30_000, () => req.destroy(new Error('Request timed out')));
     });
 }
