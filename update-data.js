@@ -384,6 +384,8 @@ async function run() {
     console.log(`Done! ${allItems.length} items written to ${mainOutputFile}`);
     console.log(`Descriptions saved in:              ${descriptionsPath}`);
     if (skipped) console.log(`(${skipped} files skipped — non-equipment Foundry types)`);
+
+    console.log('\nTip: run `node audit-descriptions.js` to check for any uncleaned Foundry markup.');
 }
 
 run().catch(err => {
